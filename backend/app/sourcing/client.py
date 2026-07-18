@@ -32,6 +32,8 @@ def fetch(
     if headers:
         merged.update(headers)
     try:
-        return httpx.get(url, params=params, headers=merged, timeout=timeout)
+        return httpx.get(
+            url, params=params, headers=merged, timeout=timeout, follow_redirects=True
+        )
     except httpx.HTTPError as exc:  # noqa: BLE001 - re-raised as a typed sourcing error
         raise SourcingError(f"request to {url} failed: {exc}") from exc

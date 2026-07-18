@@ -27,6 +27,7 @@ from app.ingestion.pipeline import RawSignal, ingest_signal
 from app.models import Application, Company, Founder, Score, Signal, Thesis
 from app.reasoning.service import score_application
 from app.reasoning.thesis_fit import thesis_fit
+from app.sourcing.arxiv import scan_arxiv
 from app.sourcing.client import SourcingError
 from app.sourcing.github import scan_github
 from app.sourcing.hn import scan_hn
@@ -39,8 +40,9 @@ OUTREACH_SCORE_THRESHOLD = 5.5
 SCANNERS: dict[str, Callable[..., list[RawSignal]]] = {
     "github": scan_github,
     "hn": scan_hn,
+    "arxiv": scan_arxiv,
 }
-DEFAULT_SOURCES = ("github", "hn")
+DEFAULT_SOURCES = ("github", "hn")  # arxiv is opt-in: papers enrich founders, not the funnel
 
 
 @dataclass(slots=True)
