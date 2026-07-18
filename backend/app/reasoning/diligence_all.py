@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
 from app.models import Application, Score
+from app.reasoning.analysis import stamp_analysis_status
 from app.reasoning.diligence import run_diligence
 from app.reasoning.memo import generate_memo
 from app.reasoning.score_all import ensure_thesis
@@ -64,6 +65,8 @@ def main() -> None:
                 f"{outcome.n_contradicted:>6}  {outcome.n_verified:>5}  "
                 f"{(', '.join(outcome.unsupported_axes) or '-')[:20]:20}  {rec}"
             )
+        # Diligence (+ memo) just advanced the pipeline; reconcile analysis_status.
+        stamp_analysis_status(session)
     finally:
         session.close()
 

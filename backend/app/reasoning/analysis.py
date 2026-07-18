@@ -29,6 +29,9 @@ from __future__ import annotations
 
 import threading
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.db import SessionLocal
 from app.models import Application
 from app.reasoning.diligence import run_diligence
@@ -61,6 +64,28 @@ def is_inflight(application_id: int) -> bool:
 
 
 # --- status transitions -----------------------------------------------------
+
+
+def derive_analysis_status(app: Application) -> str:
+    """The analysis stage implied by how far the persisted pipeline got.
+
+    Used to (re)stamp status after the batch CLIs (score_all / diligence_all) and
+    demo_seed, which drive the same stages without going through the live chain.
+    """
+    if app.memo is not None:
+        return "ready"
+    if app.status == "screened_out":
+        return "screened_out"
+    if app.scores:
+        return "scoring"
+    return "received"
+
+
+def stamp_analysis_status(session: Session) -> None:
+    """Reconcile every application's analysis_status with its persisted progress."""
+    for app in session.scalars(select(Application)):
+        app.analysis_status = derive_analysis_status(app)
+    session.commit()
 
 
 def _set_status(application_id: int, status: str, error: str | None = None) -> None:

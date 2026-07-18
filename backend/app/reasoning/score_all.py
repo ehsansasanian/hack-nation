@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
 from app.models import Application, Thesis
+from app.reasoning.analysis import stamp_analysis_status
 from app.reasoning.service import ScoringOutcome, score_application
 
 _DEFAULT_THESIS = dict(
@@ -75,6 +76,8 @@ def main() -> None:
                 f"{_fmt_axis(outcome, 'founder'):16}  {_fmt_axis(outcome, 'market'):12}  "
                 f"{_fmt_axis(outcome, 'idea_vs_market'):12}  {outcome.backend}"
             )
+        # Keep analysis_status in step with the batch scoring pass.
+        stamp_analysis_status(session)
     finally:
         session.close()
 

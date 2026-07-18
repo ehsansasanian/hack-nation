@@ -29,6 +29,7 @@ from app.config import SYNTHETIC_DIR
 from app.db import SessionLocal, engine, init_db
 from app.ingestion.load_synthetic import _load_profile, _summary
 from app.models import Application, Base, Claim, Memo, Score
+from app.reasoning.analysis import stamp_analysis_status
 from app.reasoning.diligence import run_diligence
 from app.reasoning.memo import generate_memo
 from app.reasoning.score_all import ensure_thesis
@@ -100,16 +101,7 @@ def main() -> None:
         # Stamp each application's auto-analysis stage from how far the chain got
         # (memo -> ready, screened_out -> screened_out) so the seeded DB reflects the
         # completed pipeline rather than the default 'received'.
-        for app in session.scalars(select(Application)):
-            if app.memo is not None:
-                app.analysis_status = "ready"
-            elif app.status == "screened_out":
-                app.analysis_status = "screened_out"
-            elif app.scores:
-                app.analysis_status = "scoring"
-            else:
-                app.analysis_status = "received"
-        session.commit()
+        stamp_analysis_status(session)
 
         print(
             "\nDemo DB ready: "
