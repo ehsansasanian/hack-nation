@@ -16,15 +16,25 @@ DECKS_DIR = DATA_DIR / "decks"
 
 
 def _load_env_file(path: Path) -> None:
-    """Populate ``os.environ`` from a KEY=VALUE file, without overriding existing vars."""
+    """Populate ``os.environ`` from a KEY=VALUE file.
+
+    A non-empty value in ``backend/.env`` wins over any pre-existing environment
+    variable, so a stale key exported in the shell can never shadow the project's
+    own configuration. Keys the file leaves blank fall through to the environment.
+    """
     if not path.exists():
         return
     for line in path.read_text().splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        key, _, raw = line.partition("=")
+        key = key.strip()
+        value = raw.strip().strip('"').strip("'")
+        if value:
+            os.environ[key] = value  # file is authoritative when it specifies a value
+        else:
+            os.environ.setdefault(key, value)
 
 
 _load_env_file(BASE_DIR / ".env")
