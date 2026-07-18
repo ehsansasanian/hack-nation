@@ -1,6 +1,8 @@
 # The VC Brain
 
-An AI-first VC operating system that runs the top of the venture funnel end to end: **sourcing → screening → diligence → decision**. It ingests heterogeneous founder and company signals (pitch decks, GitHub, launches, social, analyst notes) into a deduplicated, source-tagged, timestamped memory layer with a persistent Founder Score; scores each company on three independent axes (Founder, Market, Idea-vs-Market) through a configurable investment thesis; runs per-claim trust checks that surface contradictions and explicitly flag missing data; and produces an investment memo with a recommendation. This repository implements the memory layer and API contract (Phases 0-1), the reasoning layer (Phase 2: thesis fit, fast screening, 3 independent axis scores with per-axis evidence, an explicit cold-start path, and persistent Founder Score updates), and outbound sourcing (Phase 3: live GitHub, Hacker News, and arXiv scanners that feed the same funnel and draft outreach for above-threshold candidates); diligence and UI layers are stubbed against the same schema.
+An AI-first VC operating system that runs the top of the venture funnel end to end: **sourcing → screening → diligence → decision**. It ingests heterogeneous founder and company signals (pitch decks, GitHub, launches, social, analyst notes) into a deduplicated, source-tagged, timestamped memory layer with a persistent Founder Score; scores each company on three independent axes (Founder, Market, Idea-vs-Market) through a configurable investment thesis; runs per-claim trust checks that surface contradictions and explicitly flag missing data; and produces an investment memo with a recommendation. This repository implements the memory layer and API contract (Phases 0-1), the reasoning layer (Phase 2: thesis fit, fast screening, 3 independent axis scores with per-axis evidence, an explicit cold-start path, and persistent Founder Score updates), outbound sourcing (Phase 3: live GitHub, Hacker News, and arXiv scanners that feed the same funnel and draft outreach for above-threshold candidates), and diligence + memo (Phase 4: claim extraction, a per-claim Trust Score that surfaces seeded contradictions, a validator self-correction pass, memo generation, and natural-language pipeline search); the UI layer is stubbed against the same schema.
+
+Every reasoning layer (scoring and diligence) sits behind a **dual backend seam**: an OpenAI structured-output path and a deterministic, network-free offline path implementing the identical contract, with automatic fallback and provenance stamped on every output - so the whole system runs (and the demo rehearses) with the network off, and one re-run upgrades everything to live LLM output with no code change.
 
 ## Architecture
 
@@ -36,6 +38,7 @@ cd backend
 uv sync                                   # install dependencies
 uv run python -m app.ingestion.load_synthetic   # seed the SQLite DB (idempotent)
 uv run python -m app.reasoning.score_all        # seed thesis + run 3-axis scoring (add --backend offline for no network)
+uv run python -m app.reasoning.diligence_all    # run diligence + memo on every scored app (add --backend offline)
 uv run uvicorn app.main:app --reload      # serve on http://127.0.0.1:8000
 ```
 
@@ -44,11 +47,13 @@ API docs are at `http://127.0.0.1:8000/docs`. Key endpoints:
 - `GET /pipeline` - ranked list of applications with the 3 axis scores per row (filter by `status`, `origin`)
 - `POST /applications` - inbound apply (company name + deck text)
 - `POST /applications/{id}/score` - run thesis filter -> screening -> 3-axis scoring (`?force=true` to override a screen-out, `?backend=offline|openai` to pin a backend)
+- `POST /applications/{id}/diligence` - claim extraction -> per-claim truth-gap -> validator (idempotent; `?backend=offline|openai`)
+- `POST /applications/{id}/memo` - generate the investment memo (runs diligence first if needed); `GET` fetches it
+- `POST /query` - natural-language pipeline search (see below)
 - `GET /applications/{id}` - application detail (scores, claims, deck, founders)
 - `GET /founders/{id}` - founder profile with persistent score history
 - `GET /thesis`, `PUT /thesis` - investment thesis configuration
 - `POST /sourcing/scan` - run the live outbound scanners (see below)
-- `POST /query`, `GET /applications/{id}/memo` - stubbed (later phases, return 501)
 
 ## Outbound sourcing (Phase 3)
 
@@ -68,6 +73,24 @@ curl -X POST http://127.0.0.1:8000/sourcing/scan \
 
 # outbound candidates then appear in the pipeline alongside inbound
 curl 'http://127.0.0.1:8000/pipeline?origin=outbound'
+```
+
+## Diligence, Trust Score & memo (Phase 4)
+
+Diligence extracts discrete **claims** (traction / revenue / team / market) from the deck and from self-asserted public posts, then runs a **per-claim truth-gap** against stored signals - labelling each `verified` (external evidence supports), `consistent` (nothing contradicts), `unverified` (no evidence either way), or `contradicted` (a signal conflicts, with a note naming both sources). A **validator** self-correction pass then refutes each axis rationale and downgrades over-optimistic claims. The **memo** renders every claim at its trust level, flags missing data explicitly (`Cap table: not disclosed`), and ends with a recommendation (`invest $100K` / `pass` / `need-more-info`) tied to the three axis scores (never averaged) and thesis fit.
+
+```bash
+# diligence a single application (e.g. the seeded-contradiction demo)
+curl -X POST 'http://127.0.0.1:8000/applications/2/diligence?backend=offline'   # Ledgerly: $50k MRR vs pre-revenue
+
+# generate + fetch its memo
+curl -X POST 'http://127.0.0.1:8000/applications/2/memo?backend=offline'
+curl 'http://127.0.0.1:8000/applications/2/memo'
+
+# natural-language pipeline search: parse -> filter -> rerank with per-result rationale
+curl -X POST http://127.0.0.1:8000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"technical founder, Berlin, AI infra, no prior VC backing","backend":"offline"}'
 ```
 
 ## Run the frontend
