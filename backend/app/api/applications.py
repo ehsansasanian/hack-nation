@@ -11,14 +11,36 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
 from app.models import Application
+from app.reasoning.service import ScoringOutcome, score_application
 from app.schemas import (
     ApplicationCreate,
     ApplicationDetailOut,
     ApplicationOut,
     FounderOut,
+    ScoreOut,
+    ScoringResultOut,
+    ThesisFitOut,
 )
 
 router = APIRouter(tags=["applications"])
+
+
+def _to_scoring_result(outcome: ScoringOutcome) -> ScoringResultOut:
+    return ScoringResultOut(
+        application_id=outcome.application_id,
+        status=outcome.status,
+        backend=outcome.backend if outcome.fallback_from is None
+        else f"{outcome.backend} (fallback from {outcome.fallback_from})",
+        thesis_fit=ThesisFitOut(
+            in_scope=outcome.thesis_fit.in_scope,
+            out_of_scope_reasons=outcome.thesis_fit.out_of_scope_reasons,
+            rationale=outcome.thesis_fit.rationale,
+        ),
+        screening_verdict=outcome.screening_verdict,
+        screening_rationale=outcome.screening_rationale,
+        cold_start=outcome.cold_start,
+        scores=[ScoreOut.model_validate(s) for s in outcome.scores],
+    )
 
 
 @router.post("/applications", response_model=ApplicationOut, status_code=201)
@@ -84,6 +106,27 @@ def get_application(
     detail = ApplicationDetailOut.model_validate(application)
     detail.founders = [FounderOut.model_validate(f) for f in application.company.founders]
     return detail
+
+
+@router.post("/applications/{application_id}/score", response_model=ScoringResultOut)
+def score_application_endpoint(
+    application_id: int,
+    force: bool = False,
+    backend: str | None = None,
+    session: Session = Depends(get_session),
+) -> ScoringResultOut:
+    """Run the Phase 2 reasoning pipeline for one application.
+
+    thesis filter -> screening -> 3 independent axis scores (+ cold-start branch)
+    -> persistent Founder Score update. ``force=true`` scores even when the app is
+    screened out or out of thesis scope (analyst override). ``backend`` may pin
+    ``openai`` or ``offline``; by default a live-call failure falls back to offline.
+    """
+    try:
+        outcome = score_application(session, application_id, force=force, prefer_backend=backend)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_scoring_result(outcome)
 
 
 @router.get("/applications/{application_id}/memo")
