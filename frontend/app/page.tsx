@@ -1,65 +1,112 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import * as React from "react";
+
+import { api } from "@/lib/api";
+import type { Application, QueryResponse } from "@/lib/types";
+import { PageHeader } from "@/components/page-header";
+import { Async, useFetch } from "@/components/async";
+import { QueryBar } from "@/components/pipeline/query-bar";
+import { QueryResults } from "@/components/pipeline/query-results";
+import {
+  PipelineTable,
+  type PipelineRow,
+} from "@/components/pipeline/pipeline-table";
+
+async function loadPipeline(): Promise<PipelineRow[]> {
+  const apps = await api.pipeline();
+  // Enrich each row with a per-claim trust summary (the pipeline endpoint
+  // carries scores but not claims). Failures degrade gracefully to no summary.
+  const details = await Promise.allSettled(apps.map((a) => api.application(a.id)));
+  const rows: PipelineRow[] = apps.map((app, i) => {
+    const d = details[i];
+    if (d.status !== "fulfilled") return { app };
+    const claims = d.value.claims;
+    return {
+      app,
+      trust: {
+        contradicted: claims.filter((c) => c.trust_level === "contradicted").length,
+        verified: claims.filter((c) => c.trust_level === "verified").length,
+        total: claims.length,
+      },
+    };
+  });
+  return rank(rows);
+}
+
+function bestScore(app: Application): number {
+  return app.scores.reduce((m, s) => Math.max(m, s.value), 0);
+}
+
+/** Screened-out applications sink to the bottom; the rest lead with their strongest axis. */
+function rank(rows: PipelineRow[]): PipelineRow[] {
+  return [...rows].sort((a, b) => {
+    const aOut = a.app.status === "screened_out" ? 1 : 0;
+    const bOut = b.app.status === "screened_out" ? 1 : 0;
+    if (aOut !== bOut) return aOut - bOut;
+    return bestScore(b.app) - bestScore(a.app);
+  });
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex flex-col">
+      <span className={`text-lg font-semibold tabular-nums ${tone ?? ""}`}>{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+export default function PipelinePage() {
+  const state = useFetch(loadPipeline, []);
+  const [results, setResults] = React.useState<QueryResponse | null>(null);
+
+  return (
+    <div>
+      <PageHeader
+        title="Pipeline"
+        subtitle="Every application ranked across three independent axes - never averaged."
+      />
+      <div className="space-y-5 px-8 py-6">
+        <QueryBar
+          onResults={setResults}
+          onClear={() => setResults(null)}
+          active={results !== null}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {results ? (
+          <QueryResults data={results} />
+        ) : (
+          <Async state={state}>
+            {(rows) => {
+              const active = rows.filter((r) => r.app.status !== "screened_out");
+              const contradicted = rows.filter(
+                (r) => (r.trust?.contradicted ?? 0) > 0,
+              ).length;
+              const coldStart = rows.filter((r) =>
+                r.app.scores.some((s) => s.cold_start),
+              ).length;
+              const outbound = rows.filter((r) => r.app.origin === "outbound").length;
+              return (
+                <>
+                  <div className="flex flex-wrap gap-x-10 gap-y-3 rounded-xl border border-border bg-card px-5 py-4">
+                    <Stat label="Applications" value={rows.length} />
+                    <Stat label="Active in funnel" value={active.length} />
+                    <Stat label="Outbound sourced" value={outbound} />
+                    <Stat
+                      label="With contradictions"
+                      value={contradicted}
+                      tone={contradicted ? "text-red-600" : undefined}
+                    />
+                    <Stat label="Cold-start" value={coldStart} />
+                  </div>
+                  <PipelineTable rows={rows} />
+                </>
+              );
+            }}
+          </Async>
+        )}
+      </div>
     </div>
   );
 }
