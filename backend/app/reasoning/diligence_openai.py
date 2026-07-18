@@ -92,11 +92,19 @@ class OpenAIDiligenceBackend(DiligenceBackend):
             f"COMPANY: {ctx.company.name}\n\n"
             f"CLAIMS TO CHECK:\n{_claims_block(claims)}\n\n"
             f"EVIDENCE SIGNALS (cite these signal_ids):\n{render_evidence(ctx.evidence_signals)}\n\n"
-            "For each claim assign a trust_level: verified (a signal confirms it), "
-            "consistent (nothing contradicts and it is plausible), unverified (no evidence "
-            "either way), or contradicted (a signal conflicts). Cite evidence_signal_ids. "
-            "When contradicted, write a contradiction_note naming BOTH the claim and the "
-            "conflicting signal. Return one assessment per claim, in order."
+            "For each claim assign a trust_level:\n"
+            "- verified: a specific signal confirms it (cite that signal_id).\n"
+            "- consistent: nothing contradicts it and it is plausible.\n"
+            "- unverified: NO signal speaks to it either way. Absence of evidence is "
+            "ALWAYS 'unverified', NEVER 'contradicted'.\n"
+            "- contradicted: a specific signal DIRECTLY conflicts with the claim. This is "
+            "allowed ONLY when you can (a) put that conflicting signal_id in "
+            "evidence_signal_ids, and (b) write a contradiction_note that quotes the "
+            "signal_id and its conflicting content next to the claim text, e.g. \"Claim "
+            "'X' conflicts with signal_id=14 which states 'Y'.\" If you cannot point to "
+            "such a signal, the claim is 'unverified', not 'contradicted'.\n"
+            "Cite evidence_signal_ids for every verified/contradicted verdict. Return one "
+            "assessment per claim, in order."
         )
         return list(self._parse(JUDGE_MODEL, user, ClaimAssessments).assessments)
 
@@ -121,7 +129,10 @@ class OpenAIDiligenceBackend(DiligenceBackend):
             "actually supported by the cited signals? Set supported=false and explain if "
             "not. For each claim, re-check its trust_level against the cited evidence and "
             "DOWNGRADE (never upgrade) if it is over-optimistic; keep legitimate "
-            "contradictions. Reference the 0-based claim index."
+            "contradictions. A claim marked 'contradicted' that does NOT cite a specific "
+            "conflicting signal_id (empty evidence) or whose note does not quote that "
+            "signal must be revised to 'unverified' - absence of evidence is not a "
+            "contradiction. Reference the 0-based claim index."
         )
         return self._parse(JUDGE_MODEL, user, ValidatorReport)
 

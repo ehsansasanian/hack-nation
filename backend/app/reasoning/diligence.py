@@ -112,6 +112,11 @@ def _run(
     claim_notes = _apply_claim_critiques(assessments, report)
     unsupported = _apply_axis_critiques(ctx.scores, report)
 
+    # 3b. Evidence gate (backend-agnostic): a 'contradicted' verdict must trace to
+    #     real conflicting evidence. Anything marked contradicted without a
+    #     substantive note or a valid conflicting signal is downgraded to unverified.
+    _enforce_contradictions(assessments, claim_notes, universe)
+
     # 4. Persist - clean upsert so re-running never duplicates claims.
     _replace_claims(session, app.id, assessments, claim_notes, universe)
     session.commit()
@@ -145,6 +150,49 @@ def _apply_claim_critiques(
         elif critique.note:
             notes[i] = critique.note
     return notes
+
+
+def _is_substantive_note(note: str | None) -> bool:
+    """A contradiction note must carry real content, not be blank or a stub."""
+    return bool(note) and len(note.strip()) >= 12
+
+
+def _enforce_contradictions(
+    assessments: list[ClaimAssessment],
+    notes: dict[int, str | None],
+    universe: set[int],
+) -> None:
+    """Hard gate for the ``contradicted`` trust level, applied to every backend.
+
+    A contradiction must trace to actual conflicting evidence: a valid conflicting
+    ``evidence_signal_id`` AND a substantive ``contradiction_note`` naming the
+    conflict. A claim marked ``contradicted`` without both is a model asserting a
+    conflict it cannot back up - it is downgraded to ``unverified`` (absence of
+    evidence is not a contradiction). The downgrade is never silent: its reason is
+    recorded on ``validator_note`` so the signal -> claim -> trust chain stays
+    auditable for traceability.
+    """
+    for i, a in enumerate(assessments):
+        if a.trust_level != "contradicted":
+            continue
+        has_signal = bool(_validate_ids(a.evidence_signal_ids, universe))
+        has_note = _is_substantive_note(a.contradiction_note)
+        if has_signal and has_note:
+            continue  # a real, evidenced contradiction - keep it.
+        if not has_signal and not has_note:
+            missing = "cites no conflicting evidence signal and gives no contradiction note"
+        elif not has_signal:
+            missing = "cites no conflicting evidence signal"
+        else:
+            missing = "gives no substantive contradiction note"
+        reason = (
+            f"Downgraded contradicted->unverified: {missing}; a contradiction must "
+            "trace to a real conflicting signal."
+        )
+        a.trust_level = "unverified"
+        a.contradiction_note = ""
+        existing = notes.get(i)
+        notes[i] = f"{existing} {reason}".strip() if existing else reason
 
 
 def _apply_axis_critiques(scores: list[Score], report) -> list[str]:
