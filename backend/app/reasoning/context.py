@@ -8,7 +8,7 @@ and detects the cold-start condition - so backends only consume a prepared
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
