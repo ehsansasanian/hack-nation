@@ -1,6 +1,6 @@
 # The VC Brain
 
-An AI-first VC operating system that runs the top of the venture funnel end to end: **sourcing → screening → diligence → decision**. It ingests heterogeneous founder and company signals (pitch decks, GitHub, launches, social, analyst notes) into a deduplicated, source-tagged, timestamped memory layer with a persistent Founder Score; scores each company on three independent axes (Founder, Market, Idea-vs-Market) through a configurable investment thesis; runs per-claim trust checks that surface contradictions and explicitly flag missing data; and produces an investment memo with a recommendation. This repository implements the memory layer and API contract (Phases 0-1) and the reasoning layer (Phase 2: thesis fit, fast screening, 3 independent axis scores with per-axis evidence, an explicit cold-start path, and persistent Founder Score updates); sourcing, diligence, and UI layers are stubbed against the same schema.
+An AI-first VC operating system that runs the top of the venture funnel end to end: **sourcing → screening → diligence → decision**. It ingests heterogeneous founder and company signals (pitch decks, GitHub, launches, social, analyst notes) into a deduplicated, source-tagged, timestamped memory layer with a persistent Founder Score; scores each company on three independent axes (Founder, Market, Idea-vs-Market) through a configurable investment thesis; runs per-claim trust checks that surface contradictions and explicitly flag missing data; and produces an investment memo with a recommendation. This repository implements the memory layer and API contract (Phases 0-1), the reasoning layer (Phase 2: thesis fit, fast screening, 3 independent axis scores with per-axis evidence, an explicit cold-start path, and persistent Founder Score updates), and outbound sourcing (Phase 3: live GitHub, Hacker News, and arXiv scanners that feed the same funnel and draft outreach for above-threshold candidates); diligence and UI layers are stubbed against the same schema.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ cp backend/.env.example backend/.env
 | Variable         | Used for                                             |
 | ---------------- | ---------------------------------------------------- |
 | `OPENAI_API_KEY` | LLM reasoning (screening, scoring, memo) - Phase 2+  |
-| `GITHUB_TOKEN`   | Raises the GitHub API rate limit for sourcing - Phase 3 |
+| `GITHUB_TOKEN`   | Raises the GitHub API rate limit (60 -> 5000 req/h) for sourcing - Phase 3. If unset, the logged-in `gh` CLI token is used at runtime |
 | `VC_BRAIN_LLM`   | Reasoning backend: `openai` (default when a key is present), `offline` (deterministic, no network), or `auto` |
 
 Neither key is required for Phase 0-1 (memory layer + API). Scoring works with the network off via `VC_BRAIN_LLM=offline` (used for the offline demo rehearsal); the OpenAI path falls back to the offline backend if a live call fails.
@@ -47,7 +47,28 @@ API docs are at `http://127.0.0.1:8000/docs`. Key endpoints:
 - `GET /applications/{id}` - application detail (scores, claims, deck, founders)
 - `GET /founders/{id}` - founder profile with persistent score history
 - `GET /thesis`, `PUT /thesis` - investment thesis configuration
-- `POST /query`, `GET /applications/{id}/memo`, `POST /sourcing/scan` - stubbed (later phases, return 501)
+- `POST /sourcing/scan` - run the live outbound scanners (see below)
+- `POST /query`, `GET /applications/{id}/memo` - stubbed (later phases, return 501)
+
+## Outbound sourcing (Phase 3)
+
+`POST /sourcing/scan` runs live scanners and feeds finds into the **same** ingestion pipeline (dedup + entity resolution) and the **same** Phase 2 scoring as inbound applications:
+
+- **GitHub** - recently-created AI/infra repos ranked by star velocity; enriched with owner profile, commit cadence, and README quality.
+- **Hacker News** - Show HN launches ranked by points velocity; author + linked domain extracted (Algolia API, no key).
+- **arXiv** - recent cs.AI papers attached to the lead author (opt-in; enriches the founder graph, creates no applications).
+
+In-thesis candidates above the score threshold become `Application(origin="outbound")` with a personalized **draft** outreach message (nothing is ever sent). The scan is safe to re-run: unchanged content dedups to zero new signals.
+
+```bash
+# defaults: sources=["github","hn"], limit=10
+curl -X POST http://127.0.0.1:8000/sourcing/scan \
+  -H 'Content-Type: application/json' \
+  -d '{"sources":["github","hn","arxiv"],"limit":8}'
+
+# outbound candidates then appear in the pipeline alongside inbound
+curl 'http://127.0.0.1:8000/pipeline?origin=outbound'
+```
 
 ## Run the frontend
 
