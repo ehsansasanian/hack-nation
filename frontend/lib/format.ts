@@ -117,3 +117,42 @@ export function relativeDate(iso: string): string {
 export function contradictionCount(claims: { trust_level: TrustLevel | null }[]): number {
   return claims.filter((c) => c.trust_level === "contradicted").length;
 }
+
+/** A short human summary of a signal's JSON content, for evidence rows. */
+export function signalSummary(content: Record<string, unknown>): string {
+  const c = content as Record<string, unknown>;
+  const pick = (k: string) => (c[k] == null ? undefined : String(c[k]));
+  const candidates: (string | undefined)[] = [
+    pick("title"),
+    pick("repo") && `${pick("repo")}${c.stars != null ? ` · ${c.stars}★` : ""}`,
+    pick("note"),
+    pick("text"),
+    pick("headline"),
+    pick("kind") === "inbound_application" ? "Inbound deck submission" : undefined,
+    pick("summary"),
+  ];
+  const found = candidates.find(Boolean);
+  if (found) return found;
+  const entries = Object.entries(c)
+    .filter(([, v]) => v != null && typeof v !== "object")
+    .slice(0, 3)
+    .map(([k, v]) => `${k}: ${v}`);
+  return entries.join(" · ") || "signal";
+}
+
+const VALIDATOR_WARNING_MARKERS = [
+  "contradict",
+  "overstat",
+  "not supported",
+  "unsupported",
+  "hallucinat",
+  "likely overstated",
+  "refut",
+];
+
+/** True when a validator note is flagging a problem rather than confirming the rationale. */
+export function isValidatorWarning(note: string | null | undefined): boolean {
+  if (!note) return false;
+  const n = note.toLowerCase();
+  return VALIDATOR_WARNING_MARKERS.some((m) => n.includes(m));
+}
