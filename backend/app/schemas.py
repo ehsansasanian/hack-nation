@@ -167,6 +167,47 @@ class MemoOut(_ORM):
     generated_at: datetime
 
 
+# --- Phase 6: agentic traceability ------------------------------------------
+
+
+class TraceSignalOut(_ORM):
+    """A signal in the application dossier, resolved for the trace panel."""
+
+    id: int
+    source: str
+    timestamp: datetime
+    ingested_at: datetime
+    excerpt: str
+    content: dict = {}
+
+
+class TraceStepOut(_ORM):
+    """One ordered step in the reasoning chain."""
+
+    index: int
+    kind: str  # signals | screening | score | claim | memo
+    title: str
+    ref: str | None = None  # axis name (score) or claim id (claim), for UI anchoring
+    status: str | None = None  # verdict / score / trust level / recommendation verb
+    summary: str = ""
+    signal_ids: list[int] = []  # signals this step reasoned over
+    source_signal_id: int | None = None  # the signal a claim was extracted from
+    detail: dict = {}
+
+
+class TraceOut(_ORM):
+    """The full, ordered reasoning chain for one application, assembled from
+    existing rows (no separate trace log): signals -> screening -> per-axis
+    scoring -> claims + truth-gap -> memo, with the resolved signal dossier."""
+
+    application_id: int
+    company: CompanyOut
+    backend: str | None = None  # model provenance stamped on the scores
+    memo_recommendation: str | None = None
+    signals: list[TraceSignalOut] = []
+    steps: list[TraceStepOut] = []
+
+
 # --- Phase 3: outbound sourcing ---------------------------------------------
 
 

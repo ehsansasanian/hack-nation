@@ -14,17 +14,22 @@ from app.models import Application, Memo
 from app.reasoning.diligence import DiligenceOutcome, run_diligence
 from app.reasoning.memo import generate_memo
 from app.reasoning.service import ScoringOutcome, score_application
+from app.reasoning.trace import Trace, build_trace
 from app.schemas import (
     ApplicationCreate,
     ApplicationDetailOut,
     ApplicationOut,
     ClaimOut,
+    CompanyOut,
     DiligenceResultOut,
     FounderOut,
     MemoOut,
     ScoreOut,
     ScoringResultOut,
     ThesisFitOut,
+    TraceOut,
+    TraceSignalOut,
+    TraceStepOut,
 )
 
 router = APIRouter(tags=["applications"])
@@ -187,6 +192,36 @@ def generate_memo_endpoint(
     if memo is None:  # pragma: no cover - generate_memo always upserts one
         raise HTTPException(status_code=500, detail="Memo generation produced no memo.")
     return memo
+
+
+def _to_trace_out(trace: Trace) -> TraceOut:
+    return TraceOut(
+        application_id=trace.application_id,
+        company=CompanyOut.model_validate(trace.company),
+        backend=trace.backend,
+        memo_recommendation=trace.memo_recommendation,
+        signals=[TraceSignalOut.model_validate(s) for s in trace.signals],
+        steps=[TraceStepOut.model_validate(s) for s in trace.steps],
+    )
+
+
+@router.get("/applications/{application_id}/trace", response_model=TraceOut)
+def get_application_trace(
+    application_id: int, session: Session = Depends(get_session)
+) -> TraceOut:
+    """Phase 6 traceability: the full reasoning chain for one application.
+
+    Ordered steps - signals ingested -> screening -> per-axis scoring -> claims +
+    truth-gap -> memo - assembled from existing rows (no separate trace log), each
+    pointing back at the exact signal ids it reasoned over. The resolved signal
+    dossier is returned alongside so the "Why?" panel can render each cited
+    signal's source, timestamp and excerpt without further calls.
+    """
+    try:
+        trace = build_trace(session, application_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_trace_out(trace)
 
 
 @router.get("/applications/{application_id}/memo", response_model=MemoOut)
