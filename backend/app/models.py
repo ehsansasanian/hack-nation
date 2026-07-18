@@ -104,6 +104,11 @@ class Application(Base):
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False)
     deck_text: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String, default="in_review")  # screened_out/in_review/memo_ready
+    # Auto-analysis pipeline stage, driven by ``reasoning.analysis.analyze_application``.
+    # received -> screening -> scoring -> diligence -> memo -> ready, or the terminal
+    # branches screened_out (chain honestly stopped at screening) / failed (analysis_error set).
+    analysis_status: Mapped[str] = mapped_column(String, default="received")
+    analysis_error: Mapped[str | None] = mapped_column(Text)
     origin: Mapped[str] = mapped_column(String, default="inbound")  # inbound/outbound
     # Screening (Phase 2 fast first-pass) verdict, stored for transparency - never silent.
     screening_verdict: Mapped[str | None] = mapped_column(String)  # viable/non_viable/thesis_mismatch
