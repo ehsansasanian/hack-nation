@@ -63,18 +63,18 @@ export function PipelineTable({ rows }: { rows: PipelineRow[] }) {
   const router = useRouter();
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[860px] border-collapse text-sm">
+      <table className="w-full min-w-[820px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border bg-muted/40 text-left text-xs font-medium text-muted-foreground">
+          <tr className="border-b border-border bg-muted/40 text-left text-xs font-medium whitespace-nowrap text-muted-foreground">
             <th className="px-4 py-2.5 font-medium">Company</th>
             {AXIS_ORDER.map((a) => (
-              <th key={a} className="px-3 py-2.5 font-medium">
-                {AXIS_META[a].label}
+              <th key={a} className="px-2.5 py-2.5 font-medium">
+                {a === "idea_vs_market" ? "Idea vs Mkt" : AXIS_META[a].label}
               </th>
             ))}
-            <th className="px-3 py-2.5 font-medium">Trust</th>
-            <th className="px-3 py-2.5 font-medium">Origin</th>
-            <th className="px-3 py-2.5 font-medium">Fit</th>
+            <th className="px-2.5 py-2.5 font-medium">Trust</th>
+            <th className="px-2.5 py-2.5 font-medium">Origin</th>
+            <th className="px-2.5 py-2.5 font-medium">Fit</th>
           </tr>
         </thead>
         <tbody>
@@ -98,7 +98,7 @@ export function PipelineTable({ rows }: { rows: PipelineRow[] }) {
                   >
                     {app.company.name}
                   </Link>
-                  <div className="mt-0.5 max-w-xs truncate text-xs text-muted-foreground">
+                  <div className="mt-0.5 max-w-[240px] truncate text-xs text-muted-foreground">
                     {app.company.one_liner ??
                       [app.company.sector, app.company.stage, app.company.geography]
                         .filter(Boolean)
@@ -108,7 +108,7 @@ export function PipelineTable({ rows }: { rows: PipelineRow[] }) {
                 {AXIS_ORDER.map((axis) => {
                   const s = scores.find((x) => x.axis === axis);
                   return (
-                    <td key={axis} className="px-3 py-3">
+                    <td key={axis} className="px-2.5 py-3">
                       {s ? (
                         <AxisChip score={s} />
                       ) : (
@@ -117,13 +117,13 @@ export function PipelineTable({ rows }: { rows: PipelineRow[] }) {
                     </td>
                   );
                 })}
-                <td className="px-3 py-3">
+                <td className="px-2.5 py-3">
                   <TrustCell row={{ app, trust }} />
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-2.5 py-3">
                   <OriginBadge origin={app.origin} />
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-2.5 py-3">
                   <FitCell app={app} />
                 </td>
               </tr>

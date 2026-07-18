@@ -140,19 +140,26 @@ export function signalSummary(content: Record<string, unknown>): string {
   return entries.join(" · ") || "signal";
 }
 
+// Confirmations that clear an axis - note that "no contradicted claim relied
+// upon" contains the substring "contradict" but is a *pass*, so pass markers win.
+const VALIDATOR_PASS_MARKERS = [
+  "consistent with cited evidence",
+  "no contradicted claim",
+  "rationale holds",
+];
 const VALIDATOR_WARNING_MARKERS = [
-  "contradict",
   "overstat",
   "not supported",
   "unsupported",
   "hallucinat",
-  "likely overstated",
   "refut",
+  "contradicted in diligence",
 ];
 
 /** True when a validator note is flagging a problem rather than confirming the rationale. */
 export function isValidatorWarning(note: string | null | undefined): boolean {
   if (!note) return false;
   const n = note.toLowerCase();
+  if (VALIDATOR_PASS_MARKERS.some((m) => n.includes(m))) return false;
   return VALIDATOR_WARNING_MARKERS.some((m) => n.includes(m));
 }
