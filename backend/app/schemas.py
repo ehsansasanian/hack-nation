@@ -50,14 +50,18 @@ class ScoreOut(_ORM):
     score_low: float | None = None
     score_high: float | None = None
     model: str | None = None
+    validator_note: str | None = None
 
 
 class ClaimOut(_ORM):
+    id: int
     text: str
     category: str | None = None
+    source: str | None = None
     trust_level: str | None = None
     evidence_signal_ids: list = []
     contradiction_note: str | None = None
+    validator_note: str | None = None
 
 
 class ApplicationOut(_ORM):
@@ -137,6 +141,21 @@ class ScoringResultOut(_ORM):
     screening_rationale: str | None = None
     cold_start: bool = False
     scores: list[ScoreOut] = []
+
+
+# --- Phase 4: diligence, trust score & memo ---------------------------------
+
+
+class DiligenceResultOut(BaseModel):
+    """Result of running the Phase 4 diligence pipeline on one application."""
+
+    application_id: int
+    backend: str  # which diligence backend produced the claims
+    n_claims: int
+    n_contradicted: int
+    n_verified: int
+    unsupported_axes: list[str] = []  # axes the validator could not support
+    claims: list[ClaimOut] = []
 
 
 # --- Phase 3: outbound sourcing ---------------------------------------------

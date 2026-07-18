@@ -11,11 +11,14 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
 from app.models import Application
+from app.reasoning.diligence import DiligenceOutcome, run_diligence
 from app.reasoning.service import ScoringOutcome, score_application
 from app.schemas import (
     ApplicationCreate,
     ApplicationDetailOut,
     ApplicationOut,
+    ClaimOut,
+    DiligenceResultOut,
     FounderOut,
     ScoreOut,
     ScoringResultOut,
@@ -129,9 +132,34 @@ def score_application_endpoint(
     return _to_scoring_result(outcome)
 
 
-@router.get("/applications/{application_id}/memo")
-def get_memo(application_id: int) -> None:
-    raise HTTPException(
-        status_code=501,
-        detail="Memo generation is implemented in Phase 4 (diligence, trust score & memo).",
+def _to_diligence_result(outcome: DiligenceOutcome) -> DiligenceResultOut:
+    return DiligenceResultOut(
+        application_id=outcome.application_id,
+        backend=outcome.backend if outcome.fallback_from is None
+        else f"{outcome.backend} (fallback from {outcome.fallback_from})",
+        n_claims=len(outcome.claims),
+        n_contradicted=outcome.n_contradicted,
+        n_verified=outcome.n_verified,
+        unsupported_axes=outcome.unsupported_axes,
+        claims=[ClaimOut.model_validate(c) for c in outcome.claims],
     )
+
+
+@router.post("/applications/{application_id}/diligence", response_model=DiligenceResultOut)
+def run_diligence_endpoint(
+    application_id: int,
+    backend: str | None = None,
+    session: Session = Depends(get_session),
+) -> DiligenceResultOut:
+    """Run the Phase 4 diligence pipeline for one application.
+
+    claim extraction -> per-claim truth-gap against stored signals -> validator
+    self-correction. Claims are upserted (a re-run never duplicates them).
+    ``backend`` may pin ``openai`` or ``offline``; a live-call failure falls back
+    to offline. Scoring should have run first so the validator can refute axes.
+    """
+    try:
+        outcome = run_diligence(session, application_id, prefer_backend=backend)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_diligence_result(outcome)
