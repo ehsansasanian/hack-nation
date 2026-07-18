@@ -108,6 +108,9 @@ class Application(Base):
     # Screening (Phase 2 fast first-pass) verdict, stored for transparency - never silent.
     screening_verdict: Mapped[str | None] = mapped_column(String)  # viable/non_viable/thesis_mismatch
     screening_rationale: Mapped[str | None] = mapped_column(Text)
+    # Outbound "Activate" step (Phase 3): a personalized draft outreach message.
+    # Always a draft - nothing is ever sent anywhere.
+    outreach_draft: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     company: Mapped["Company"] = relationship(back_populates="applications")
