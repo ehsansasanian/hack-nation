@@ -167,7 +167,7 @@ export default function ApplyPage() {
             Submit application
           </Button>
           <span className="text-xs text-muted-foreground">
-            Lands in the pipeline as in-review; run scoring to produce axis scores and a memo.
+            Analysis starts automatically - you will watch screening, scoring, diligence and the memo run live.
           </span>
         </div>
       </form>

@@ -2,6 +2,7 @@
 // Base URL is configurable via NEXT_PUBLIC_API_URL (default http://localhost:8000).
 
 import type {
+  AnalyzeResult,
   Application,
   ApplicationDetail,
   FounderDetail,
@@ -87,6 +88,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  analyze: (id: number | string, force = false) =>
+    request<AnalyzeResult>(
+      `/applications/${id}/analyze${force ? "?force=true" : ""}`,
+      { method: "POST" },
+    ),
 
   // Founders
   founder: (id: number | string) => request<FounderDetail>(`/founders/${id}`),

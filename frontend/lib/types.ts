@@ -6,6 +6,15 @@ export type Trend = "improving" | "declining" | "stable";
 export type TrustLevel = "verified" | "consistent" | "unverified" | "contradicted";
 export type Origin = "inbound" | "outbound";
 export type Status = "screened_out" | "in_review" | "memo_ready";
+export type AnalysisStatus =
+  | "received"
+  | "screening"
+  | "scoring"
+  | "diligence"
+  | "memo"
+  | "ready"
+  | "screened_out"
+  | "failed";
 
 export interface Company {
   id: number;
@@ -73,6 +82,8 @@ export interface Signal {
 export interface Application {
   id: number;
   status: Status;
+  analysis_status: AnalysisStatus;
+  analysis_error: string | null;
   origin: Origin;
   screening_verdict: string | null;
   screening_rationale: string | null;
@@ -80,6 +91,13 @@ export interface Application {
   created_at: string;
   company: Company;
   scores: Score[];
+}
+
+export interface AnalyzeResult {
+  application_id: number;
+  analysis_status: AnalysisStatus;
+  scheduled: boolean;
+  detail: string;
 }
 
 export interface ApplicationDetail extends Application {
