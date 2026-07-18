@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Application, Company, Memo, Signal
+from app.models import Application, Company, Signal
 from app.reasoning.context import build_context
 
 # Canonical axis order and labels (kept local so this module stays import-light).
