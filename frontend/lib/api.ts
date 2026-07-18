@@ -1,0 +1,110 @@
+// Central typed API client for The VC Brain backend.
+// Base URL is configurable via NEXT_PUBLIC_API_URL (default http://localhost:8000).
+
+import type {
+  Application,
+  ApplicationDetail,
+  FounderDetail,
+  Memo,
+  QueryResponse,
+  ScanRequest,
+  ScanSummary,
+  Thesis,
+  ThesisUpdate,
+} from "./types";
+
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+
+export class ApiError extends Error {
+  status: number;
+  /** True when the request never reached the server (backend likely down). */
+  offline: boolean;
+
+  constructor(message: string, status: number, offline = false) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.offline = offline;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(
+      `Cannot reach the backend at ${API_BASE}. Is it running? (cd backend && uv run uvicorn app.main:app --port 8000)`,
+      0,
+      true,
+    );
+  }
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body?.detail ?? detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(detail || `Request failed (${res.status})`, res.status);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+export const api = {
+  // Pipeline & applications
+  pipeline: (params?: { status?: string; origin?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.origin) qs.set("origin", params.origin);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<Application[]>(`/pipeline${suffix}`);
+  },
+  application: (id: number | string) =>
+    request<ApplicationDetail>(`/applications/${id}`),
+  memo: (id: number | string) => request<Memo>(`/applications/${id}/memo`),
+  createApplication: (payload: {
+    company_name: string;
+    deck_text?: string;
+    founder_name?: string;
+    sector?: string;
+    stage?: string;
+    geography?: string;
+    one_liner?: string;
+  }) =>
+    request<Application>("/applications", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // Founders
+  founder: (id: number | string) => request<FounderDetail>(`/founders/${id}`),
+
+  // Thesis
+  thesis: () => request<Thesis>("/thesis"),
+  updateThesis: (payload: ThesisUpdate) =>
+    request<Thesis>("/thesis", { method: "PUT", body: JSON.stringify(payload) }),
+
+  // NL query
+  query: (q: string) =>
+    request<QueryResponse>("/query", {
+      method: "POST",
+      body: JSON.stringify({ q }),
+    }),
+
+  // Sourcing
+  scan: (payload: ScanRequest) =>
+    request<ScanSummary>("/sourcing/scan", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
