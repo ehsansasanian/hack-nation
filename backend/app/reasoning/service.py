@@ -80,6 +80,11 @@ def _validate_evidence(returned: list[int], universe: set[int]) -> list[int]:
     return [i for i in dict.fromkeys(returned) if i in universe]
 
 
+def _clamp(v: float, lo: float, hi: float) -> float:
+    """Guard against an out-of-range value from any backend."""
+    return round(max(lo, min(hi, v)), 2)
+
+
 def score_application(
     session: Session,
     application_id: int,
@@ -193,8 +198,9 @@ def _score_founder(
     universe = ctx.founder_evidence_ids()
     if ctx.cold_start:
         res: ColdStartAxisResult = backend.score_founder_cold_start(ctx)
-        low, high = sorted((res.score_low, res.score_high))
+        low, high = sorted((_clamp(res.score_low, 1, 10), _clamp(res.score_high, 1, 10)))
         midpoint = round((low + high) / 2, 1)
+        confidence = _clamp(res.confidence, 0, 1)
         score = _upsert_score(
             session,
             app.id,
@@ -203,30 +209,32 @@ def _score_founder(
             trend="stable",
             rationale=res.rationale,
             evidence_signal_ids=_validate_evidence(res.evidence_signal_ids, universe),
-            confidence=res.confidence,
+            confidence=confidence,
             cold_start=True,
             score_low=low,
             score_high=high,
             model=backend.name,
         )
-        return score, midpoint, res.confidence
+        return score, midpoint, confidence
 
     res_axis: AxisResult = backend.score_founder(ctx)
+    value = _clamp(res_axis.score, 1, 10)
+    confidence = _clamp(res_axis.confidence, 0, 1)
     score = _upsert_score(
         session,
         app.id,
         "founder",
-        value=res_axis.score,
+        value=value,
         trend=res_axis.trend,
         rationale=res_axis.rationale,
         evidence_signal_ids=_validate_evidence(res_axis.evidence_signal_ids, universe),
-        confidence=res_axis.confidence,
+        confidence=confidence,
         cold_start=False,
         score_low=None,
         score_high=None,
         model=backend.name,
     )
-    return score, res_axis.score, res_axis.confidence
+    return score, value, confidence
 
 
 def _score_generic(
@@ -246,11 +254,11 @@ def _score_generic(
         session,
         app.id,
         axis,
-        value=res.score,
+        value=_clamp(res.score, 1, 10),
         trend=res.trend,
         rationale=res.rationale,
         evidence_signal_ids=_validate_evidence(res.evidence_signal_ids, universe),
-        confidence=res.confidence,
+        confidence=_clamp(res.confidence, 0, 1),
         cold_start=False,
         score_low=None,
         score_high=None,

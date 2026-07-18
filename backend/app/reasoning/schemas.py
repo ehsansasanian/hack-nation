@@ -4,6 +4,11 @@ These Pydantic models are what the OpenAI backend requests via strict
 ``response_format`` and what the deterministic offline backend fills in by hand.
 Keeping them in one place means both backends are guaranteed to agree on shape,
 and the service layer never has to branch on which backend ran.
+
+Numeric ranges are expressed in the field *descriptions* (which guide the model)
+rather than ``ge``/``le`` validators: the latter emit ``minimum``/``maximum`` into
+the JSON schema, which strict structured-output mode may reject. The service
+clamps values into range instead.
 """
 
 from __future__ import annotations
@@ -25,13 +30,13 @@ class ScreeningResult(BaseModel):
 class AxisResult(BaseModel):
     """One axis of the 3-axis score. Used for founder / market / idea_vs_market."""
 
-    score: float = Field(ge=1, le=10, description="1-10, higher is stronger.")
+    score: float = Field(description="1-10, higher is stronger.")
     trend: Trend
     rationale: str
     evidence_signal_ids: list[int] = Field(
         description="IDs of the provided signals that justify this score."
     )
-    confidence: float = Field(ge=0, le=1)
+    confidence: float = Field(description="0-1.")
 
 
 class ColdStartAxisResult(BaseModel):
@@ -41,11 +46,11 @@ class ColdStartAxisResult(BaseModel):
     range and lower confidence instead.
     """
 
-    score_low: float = Field(ge=1, le=10)
-    score_high: float = Field(ge=1, le=10)
+    score_low: float = Field(description="Low end of the 1-10 potential range.")
+    score_high: float = Field(description="High end of the 1-10 potential range.")
     rationale: str = Field(
         description="Assessment on the potential rubric: deck quality, domain "
         "insight specificity, learning velocity, problem-founder fit."
     )
     evidence_signal_ids: list[int]
-    confidence: float = Field(ge=0, le=1, description="Kept low - evidence is thin.")
+    confidence: float = Field(description="0-1, kept low - evidence is thin.")
