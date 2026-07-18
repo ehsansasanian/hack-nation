@@ -68,6 +68,7 @@ class ApplicationOut(_ORM):
     origin: str
     screening_verdict: str | None = None
     screening_rationale: str | None = None
+    outreach_draft: str | None = None  # set only on activated outbound candidates
     created_at: datetime
     company: CompanyOut
     scores: list[ScoreOut] = []
@@ -136,3 +137,41 @@ class ScoringResultOut(_ORM):
     screening_rationale: str | None = None
     cold_start: bool = False
     scores: list[ScoreOut] = []
+
+
+# --- Phase 3: outbound sourcing ---------------------------------------------
+
+
+class ScanRequest(BaseModel):
+    """Trigger an outbound scan. Defaults are modest to stay fast and rate-safe."""
+
+    sources: list[str] = ["github", "hn"]
+    limit: int = 10  # candidates per source
+
+
+class ScanCandidateOut(_ORM):
+    source: str
+    handle: str
+    company: str
+    why_flagged: str
+    status: str  # in_review / screened_out / out_of_thesis
+    application_id: int | None = None
+    best_axis: str | None = None
+    best_score: float | None = None
+    scores: dict[str, float] = {}
+    outreach_drafted: bool = False
+
+
+class ScanSummaryOut(_ORM):
+    sources_requested: list[str] = []
+    source_errors: dict[str, str] = {}
+    signals_fetched: int = 0
+    signals_created: int = 0
+    signals_duplicate: int = 0
+    founders_created: int = 0
+    companies_created: int = 0
+    applications_created: int = 0
+    outbound_in_review: int = 0
+    outbound_screened_out: int = 0
+    outreach_drafts: int = 0
+    candidates: list[ScanCandidateOut] = []
