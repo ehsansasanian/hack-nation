@@ -141,6 +141,9 @@ class Score(Base):
     score_low: Mapped[float | None] = mapped_column(Float)  # set only on cold-start (range)
     score_high: Mapped[float | None] = mapped_column(Float)
     model: Mapped[str | None] = mapped_column(String)  # provenance: e.g. "gpt-4o" / "offline-deterministic"
+    # Validator (self-correction) refutation of this axis rationale, if any. None =
+    # the rationale survived the refutation pass.
+    validator_note: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship(back_populates="scores")
 
@@ -152,11 +155,17 @@ class Claim(Base):
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(String)  # traction/revenue/team/market
+    # Where the claim originated (deck / twitter / blog / hn) - the head of the
+    # signal -> claim -> trust -> memo chain Phase 6 traceability renders.
+    source: Mapped[str | None] = mapped_column(String)
     trust_level: Mapped[str | None] = mapped_column(
         String
     )  # verified/consistent/unverified/contradicted
     evidence_signal_ids: Mapped[list] = mapped_column(JSON, default=list)
     contradiction_note: Mapped[str | None] = mapped_column(Text)
+    # Validator (self-correction) outcome: a downgrade/confirmation note, stored so
+    # the reasoning chain stays auditable. None = validator left the claim as-is.
+    validator_note: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship(back_populates="claims")
 

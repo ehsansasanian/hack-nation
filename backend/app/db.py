@@ -27,6 +27,9 @@ def get_session() -> Generator[Session, None, None]:
 # not alter an existing table, so we add missing columns idempotently on startup.
 _ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
     "applications": {"outreach_draft": "TEXT"},
+    # Phase 4 traceability columns (signal -> claim -> trust -> memo chain).
+    "claims": {"source": "TEXT", "validator_note": "TEXT"},
+    "scores": {"validator_note": "TEXT"},
 }
 
 

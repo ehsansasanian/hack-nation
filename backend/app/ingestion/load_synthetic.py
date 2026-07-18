@@ -55,7 +55,9 @@ def _company_hint(profile: dict) -> CompanyHint | None:
     )
 
 
-def _get_or_create_application(session: Session, company_id: int, deck_text: str) -> None:
+def _get_or_create_application(
+    session: Session, company_id: int, deck_text: str | None
+) -> None:
     existing = session.scalar(
         select(Application).where(
             Application.company_id == company_id, Application.origin == "inbound"
@@ -70,7 +72,7 @@ def _get_or_create_application(session: Session, company_id: int, deck_text: str
                 status="in_review",
             )
         )
-    else:
+    elif deck_text is not None:
         existing.deck_text = deck_text
 
 
@@ -110,6 +112,13 @@ def _load_profile(session: Session, profile: dict) -> None:
         company_id = company_id or signal.company_id
         if company_id is not None:
             _get_or_create_application(session, company_id, deck_text)
+    elif profile.get("profile_type") == "contradiction" and company_id is not None:
+        # Contradiction profiles exist to demo the Trust Score. Those without a
+        # deck still carry the seeded contradiction in their signals (a public
+        # self-asserted claim vs a private diligence note), so they belong in the
+        # pipeline as diligence-able inbound applications - claims are then mined
+        # from the self-asserted signals rather than a deck.
+        _get_or_create_application(session, company_id, None)
 
 
 def _summary(session: Session) -> dict[str, int]:
