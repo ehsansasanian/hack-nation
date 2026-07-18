@@ -1,0 +1,18 @@
+# local/planning files - never commit
+STEPS.md
+Hackathon.md
+*.pdf
+
+# secrets - commit .env.example only
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+.venv/
+*.db
+
+# node / next
+node_modules/
+.next/
