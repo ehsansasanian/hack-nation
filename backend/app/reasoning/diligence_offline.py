@@ -387,7 +387,7 @@ class OfflineDiligenceBackend(DiligenceBackend):
         ) or "not disclosed"
 
         snapshot = (
-            f"{c.name} - {c.one_liner or 'no one-liner on file'}. "
+            f"{c.name} - {(c.one_liner or 'no one-liner on file').rstrip('.')}. "
             f"Sector {c.sector or 'n/a'}, stage {c.stage or 'n/a'}, geography {c.geography or 'n/a'}. "
             f"Founders: {founders}. {ctx.thesis_rationale}"
         )
@@ -461,8 +461,13 @@ class OfflineDiligenceBackend(DiligenceBackend):
         traction = [a for a in assessments if a.category in ("traction", "revenue")]
         if not traction:
             return "No traction or revenue KPIs stated in the application."
-        lines = [f"- [{a.trust_level}] {a.text}" for a in traction]
-        return "\n".join(lines)
+        verified = sum(a.trust_level == "verified" for a in traction)
+        contradicted = sum(a.trust_level == "contradicted" for a in traction)
+        return (
+            f"{len(traction)} traction/revenue KPI(s) stated: {verified} externally "
+            f"verified, {contradicted} contradicted by diligence. See claim-level "
+            "trust levels below."
+        )
 
     # --- NL query parse ----------------------------------------------------
     def parse_query(self, query: str) -> ParsedQuery:

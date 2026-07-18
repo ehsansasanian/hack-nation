@@ -158,6 +158,15 @@ class DiligenceResultOut(BaseModel):
     claims: list[ClaimOut] = []
 
 
+class MemoOut(_ORM):
+    """Investment memo: the five required sections + a scores-tied recommendation."""
+
+    application_id: int
+    sections: dict = {}  # {section title: markdown/prose}
+    recommendation: str | None = None
+    generated_at: datetime
+
+
 # --- Phase 3: outbound sourcing ---------------------------------------------
 
 

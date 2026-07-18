@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
-from app.models import Application
+from app.models import Application, Memo
 from app.reasoning.diligence import DiligenceOutcome, run_diligence
+from app.reasoning.memo import generate_memo
 from app.reasoning.service import ScoringOutcome, score_application
 from app.schemas import (
     ApplicationCreate,
@@ -20,6 +21,7 @@ from app.schemas import (
     ClaimOut,
     DiligenceResultOut,
     FounderOut,
+    MemoOut,
     ScoreOut,
     ScoringResultOut,
     ThesisFitOut,
@@ -163,3 +165,36 @@ def run_diligence_endpoint(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _to_diligence_result(outcome)
+
+
+@router.post("/applications/{application_id}/memo", response_model=MemoOut)
+def generate_memo_endpoint(
+    application_id: int,
+    backend: str | None = None,
+    session: Session = Depends(get_session),
+) -> Memo:
+    """Generate (or regenerate) the investment memo for one application.
+
+    Runs diligence first if it has not run yet, writes the five required sections
+    with every claim rendered at its trust level, explicit gap flags, and a
+    recommendation tied to thesis fit and the three axis scores. Upserts the memo.
+    """
+    try:
+        generate_memo(session, application_id, prefer_backend=backend)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    memo = session.scalar(select(Memo).where(Memo.application_id == application_id))
+    if memo is None:  # pragma: no cover - generate_memo always upserts one
+        raise HTTPException(status_code=500, detail="Memo generation produced no memo.")
+    return memo
+
+
+@router.get("/applications/{application_id}/memo", response_model=MemoOut)
+def get_memo(application_id: int, session: Session = Depends(get_session)) -> Memo:
+    memo = session.scalar(select(Memo).where(Memo.application_id == application_id))
+    if memo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No memo yet. POST /applications/{id}/memo to generate one.",
+        )
+    return memo
