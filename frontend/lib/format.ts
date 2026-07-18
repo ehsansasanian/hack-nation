@@ -118,6 +118,19 @@ export function contradictionCount(claims: { trust_level: TrustLevel | null }[])
   return claims.filter((c) => c.trust_level === "contradicted").length;
 }
 
+export const SOURCE_TINT: Record<string, string> = {
+  github: "border-zinc-200 bg-zinc-50 text-zinc-700",
+  hn: "border-orange-200 bg-orange-50 text-orange-700",
+  arxiv: "border-red-200 bg-red-50 text-red-700",
+  deck: "border-blue-200 bg-blue-50 text-blue-700",
+  manual: "border-violet-200 bg-violet-50 text-violet-700",
+  synthetic: "border-zinc-200 bg-zinc-50 text-zinc-600",
+};
+
+export function sourceTint(source: string): string {
+  return SOURCE_TINT[source] ?? SOURCE_TINT.synthetic;
+}
+
 /** A short human summary of a signal's JSON content, for evidence rows. */
 export function signalSummary(content: Record<string, unknown>): string {
   const c = content as Record<string, unknown>;
@@ -129,6 +142,7 @@ export function signalSummary(content: Record<string, unknown>): string {
     pick("text"),
     pick("headline"),
     pick("kind") === "inbound_application" ? "Inbound deck submission" : undefined,
+    pick("excerpt"),
     pick("summary"),
   ];
   const found = candidates.find(Boolean);

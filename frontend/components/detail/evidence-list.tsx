@@ -4,17 +4,8 @@ import * as React from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import type { Signal } from "@/lib/types";
-import { relativeDate, signalSummary } from "@/lib/format";
+import { relativeDate, signalSummary, sourceTint } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const SOURCE_TINT: Record<string, string> = {
-  github: "border-zinc-200 bg-zinc-50 text-zinc-700",
-  hn: "border-orange-200 bg-orange-50 text-orange-700",
-  arxiv: "border-red-200 bg-red-50 text-red-700",
-  deck: "border-blue-200 bg-blue-50 text-blue-700",
-  manual: "border-violet-200 bg-violet-50 text-violet-700",
-  synthetic: "border-zinc-200 bg-zinc-50 text-zinc-600",
-};
 
 export function EvidenceList({
   ids,
@@ -53,7 +44,7 @@ export function EvidenceList({
                     <span
                       className={cn(
                         "shrink-0 rounded border px-1 py-0.5 font-medium uppercase",
-                        SOURCE_TINT[sig.source] ?? SOURCE_TINT.synthetic,
+                        sourceTint(sig.source),
                       )}
                     >
                       {sig.source}
