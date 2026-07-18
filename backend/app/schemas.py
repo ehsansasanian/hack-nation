@@ -45,6 +45,11 @@ class ScoreOut(_ORM):
     trend: str | None = None
     rationale: str | None = None
     evidence_signal_ids: list = []
+    confidence: float | None = None
+    cold_start: bool = False
+    score_low: float | None = None
+    score_high: float | None = None
+    model: str | None = None
 
 
 class ClaimOut(_ORM):
@@ -61,6 +66,8 @@ class ApplicationOut(_ORM):
     id: int
     status: str
     origin: str
+    screening_verdict: str | None = None
+    screening_rationale: str | None = None
     created_at: datetime
     company: CompanyOut
     scores: list[ScoreOut] = []
@@ -110,3 +117,22 @@ class ThesisUpdate(BaseModel):
     ownership_target: str | None = None
     risk_appetite: str | None = None
     active: bool = True
+
+
+class ThesisFitOut(BaseModel):
+    in_scope: bool
+    out_of_scope_reasons: list[str] = []
+    rationale: str
+
+
+class ScoringResultOut(_ORM):
+    """Result of running the Phase 2 reasoning pipeline on one application."""
+
+    application_id: int
+    status: str
+    backend: str  # which reasoning backend produced the scores
+    thesis_fit: ThesisFitOut
+    screening_verdict: str | None = None
+    screening_rationale: str | None = None
+    cold_start: bool = False
+    scores: list[ScoreOut] = []

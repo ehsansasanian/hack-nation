@@ -105,6 +105,9 @@ class Application(Base):
     deck_text: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String, default="in_review")  # screened_out/in_review/memo_ready
     origin: Mapped[str] = mapped_column(String, default="inbound")  # inbound/outbound
+    # Screening (Phase 2 fast first-pass) verdict, stored for transparency - never silent.
+    screening_verdict: Mapped[str | None] = mapped_column(String)  # viable/non_viable/thesis_mismatch
+    screening_rationale: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     company: Mapped["Company"] = relationship(back_populates="applications")
@@ -125,10 +128,16 @@ class Score(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), nullable=False)
     axis: Mapped[str] = mapped_column(String, nullable=False)  # founder/market/idea_vs_market
-    value: Mapped[float] = mapped_column(Float, nullable=False)  # 1-10
+    value: Mapped[float] = mapped_column(Float, nullable=False)  # 1-10 (range midpoint for cold-start)
     trend: Mapped[str | None] = mapped_column(String)  # improving/declining/stable
     rationale: Mapped[str | None] = mapped_column(Text)
     evidence_signal_ids: Mapped[list] = mapped_column(JSON, default=list)
+    # Phase 2 additions: confidence, cold-start range + flag, and the model that produced this.
+    confidence: Mapped[float | None] = mapped_column(Float)  # 0-1
+    cold_start: Mapped[bool] = mapped_column(default=False)
+    score_low: Mapped[float | None] = mapped_column(Float)  # set only on cold-start (range)
+    score_high: Mapped[float | None] = mapped_column(Float)
+    model: Mapped[str | None] = mapped_column(String)  # provenance: e.g. "gpt-4o" / "offline-deterministic"
 
     application: Mapped["Application"] = relationship(back_populates="scores")
 
