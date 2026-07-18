@@ -69,6 +69,9 @@ class ApplicationOut(_ORM):
 
     id: int
     status: str
+    # Auto-analysis stage: received|screening|scoring|diligence|memo|ready|screened_out|failed
+    analysis_status: str = "received"
+    analysis_error: str | None = None
     origin: str
     screening_verdict: str | None = None
     screening_rationale: str | None = None
@@ -87,6 +90,15 @@ class ApplicationDetailOut(ApplicationOut):
 class FounderDetailOut(FounderOut):
     companies: list[CompanyOut] = []
     signals: list[SignalOut] = []
+
+
+class AnalyzeOut(BaseModel):
+    """Result of scheduling (or declining to schedule) an auto-analysis run."""
+
+    application_id: int
+    analysis_status: str
+    scheduled: bool  # False = a run was already in flight, or already analysed (no force)
+    detail: str
 
 
 class ApplicationCreate(BaseModel):

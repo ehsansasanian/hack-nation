@@ -4,18 +4,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
 from app.models import Application, Memo
+from app.reasoning.analysis import acquire, is_inflight, run_analysis_task
 from app.reasoning.diligence import DiligenceOutcome, run_diligence
 from app.reasoning.memo import generate_memo
 from app.reasoning.service import ScoringOutcome, score_application
 from app.reasoning.trace import Trace, build_trace
 from app.schemas import (
+    AnalyzeOut,
     ApplicationCreate,
     ApplicationDetailOut,
     ApplicationOut,
@@ -55,10 +57,19 @@ def _to_scoring_result(outcome: ScoringOutcome) -> ScoringResultOut:
 
 @router.post("/applications", response_model=ApplicationOut, status_code=201)
 def create_application(
-    payload: ApplicationCreate, session: Session = Depends(get_session)
+    payload: ApplicationCreate,
+    background_tasks: BackgroundTasks,
+    auto_analyze: bool = True,
+    session: Session = Depends(get_session),
 ) -> Application:
     """Inbound apply: resolve/create the company via the shared ingestion pipeline,
-    then attach (idempotently) an inbound Application carrying the deck text."""
+    then attach (idempotently) an inbound Application carrying the deck text.
+
+    When ``auto_analyze`` (default ``true``) the full reasoning chain - screening,
+    scoring, diligence, memo - is scheduled in the background; the response returns
+    immediately with ``analysis_status='received'`` and the caller polls
+    ``GET /applications/{id}`` to watch it progress.
+    """
     raw = RawSignal(
         source="deck",
         content={"kind": "inbound_application", "deck_text": payload.deck_text or ""},
@@ -95,7 +106,64 @@ def create_application(
 
     session.commit()
     session.refresh(application)
+
+    if auto_analyze and acquire(application.id):
+        application.analysis_status = "received"
+        application.analysis_error = None
+        session.commit()
+        session.refresh(application)
+        background_tasks.add_task(run_analysis_task, application.id)
+
     return application
+
+
+@router.post("/applications/{application_id}/analyze", response_model=AnalyzeOut)
+def analyze_application_endpoint(
+    application_id: int,
+    background_tasks: BackgroundTasks,
+    force: bool = False,
+    session: Session = Depends(get_session),
+) -> AnalyzeOut:
+    """Manually (re)run the auto-analysis chain for one application.
+
+    Idempotent and guarded: if a run is already in flight this is a no-op
+    (``scheduled=false``). A completed (``ready``) application is not re-run unless
+    ``force=true``. Otherwise the chain is scheduled in the background and the
+    caller polls ``GET /applications/{id}``.
+
+    The in-flight guard is in-process only (a module-level set) - correct for the
+    single-process demo, but it would not coordinate across multiple workers.
+    """
+    app = session.get(Application, application_id)
+    if app is None:
+        raise HTTPException(status_code=404, detail="Application not found.")
+
+    if app.analysis_status == "ready" and not force:
+        return AnalyzeOut(
+            application_id=application_id,
+            analysis_status=app.analysis_status,
+            scheduled=False,
+            detail="Already analysed; pass force=true to re-run.",
+        )
+
+    if not acquire(application_id):
+        return AnalyzeOut(
+            application_id=application_id,
+            analysis_status=app.analysis_status,
+            scheduled=False,
+            detail="Analysis already in flight.",
+        )
+
+    app.analysis_status = "received"
+    app.analysis_error = None
+    session.commit()
+    background_tasks.add_task(run_analysis_task, application_id)
+    return AnalyzeOut(
+        application_id=application_id,
+        analysis_status="received",
+        scheduled=True,
+        detail="Analysis scheduled.",
+    )
 
 
 @router.get("/applications/{application_id}", response_model=ApplicationDetailOut)
