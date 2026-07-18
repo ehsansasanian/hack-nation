@@ -5,6 +5,7 @@ import { AXIS_META, isValidatorWarning, scoreDisplay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { TrendArrow } from "@/components/trend-arrow";
+import { WhyButton } from "@/components/trace/trace-panel";
 import { EvidenceList } from "./evidence-list";
 
 export function AxisCard({
@@ -41,11 +42,14 @@ export function AxisCard({
             <TrendArrow trend={score.trend} withLabel />
           </div>
         </div>
-        {score.cold_start && (
-          <span className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[0.7rem] font-medium text-amber-800">
-            cold-start range
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          {score.cold_start && (
+            <span className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[0.7rem] font-medium text-amber-800">
+              cold-start range
+            </span>
+          )}
+          <WhyButton kind="score" refId={score.axis} />
+        </div>
       </div>
 
       {confidence != null && (

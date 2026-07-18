@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Claim } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TrustBadge } from "@/components/trust-badge";
+import { WhyButton } from "@/components/trace/trace-panel";
 import { Badge } from "@/components/ui/badge";
 
 export function ClaimsTable({ claims }: { claims: Claim[] }) {
@@ -71,7 +72,10 @@ export function ClaimsTable({ claims }: { claims: Claim[] }) {
                     )}
                   </td>
                   <td className="px-3 py-2.5 align-top">
-                    <TrustBadge level={c.trust_level} />
+                    <div className="flex items-center gap-2">
+                      <TrustBadge level={c.trust_level} />
+                      <WhyButton kind="claim" refId={String(c.id)} />
+                    </div>
                   </td>
                 </tr>
                 {expandable && isOpen && (

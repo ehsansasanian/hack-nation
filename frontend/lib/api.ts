@@ -11,6 +11,7 @@ import type {
   ScanSummary,
   Thesis,
   ThesisUpdate,
+  Trace,
 } from "./types";
 
 export const API_BASE =
@@ -72,6 +73,7 @@ export const api = {
   application: (id: number | string) =>
     request<ApplicationDetail>(`/applications/${id}`),
   memo: (id: number | string) => request<Memo>(`/applications/${id}/memo`),
+  trace: (id: number | string) => request<Trace>(`/applications/${id}/trace`),
   createApplication: (payload: {
     company_name: string;
     deck_text?: string;

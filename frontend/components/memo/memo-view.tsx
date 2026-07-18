@@ -5,17 +5,22 @@ import Link from "next/link";
 import { Ban } from "lucide-react";
 
 import { api } from "@/lib/api";
-import type { Claim } from "@/lib/types";
+import type { Claim, Trace } from "@/lib/types";
 import { Async, useFetch } from "@/components/async";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TrustBadge } from "@/components/trust-badge";
+import { TraceProvider, WhyButton } from "@/components/trace/trace-panel";
 import { RecommendationBanner } from "./recommendation-banner";
 
 async function loadMemo(id: string) {
-  const [memo, app] = await Promise.all([api.memo(id), api.application(id)]);
-  return { memo, app };
+  const [memo, app, trace] = await Promise.all([
+    api.memo(id),
+    api.application(id),
+    api.trace(id).catch((): Trace | null => null),
+  ]);
+  return { memo, app, trace };
 }
 
 /** A "Not disclosed: a; b" line becomes a distinct, non-fabricated gap callout. */
@@ -133,7 +138,10 @@ function Traction({ text, claims }: { text: string; claims: Claim[] }) {
             className="flex items-start justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
           >
             <span className="min-w-0">{c.text}</span>
-            <TrustBadge level={c.trust_level} className="shrink-0" />
+            <span className="flex shrink-0 items-center gap-2">
+              <TrustBadge level={c.trust_level} />
+              <WhyButton kind="claim" refId={String(c.id)} />
+            </span>
           </li>
         ))}
       </ul>
@@ -175,14 +183,14 @@ export function MemoView({ id }: { id: string }) {
   const state = useFetch(() => loadMemo(id), [id]);
   return (
     <Async state={state}>
-      {({ memo, app }) => {
+      {({ memo, app, trace }) => {
         const titles = Object.keys(memo.sections);
         const ordered = [
           ...SECTION_ORDER.filter((t) => titles.includes(t)),
           ...titles.filter((t) => !SECTION_ORDER.includes(t)),
         ];
         return (
-          <div>
+          <TraceProvider trace={trace}>
             <PageHeader
               title={
                 <span className="flex items-center gap-2">
@@ -217,7 +225,7 @@ export function MemoView({ id }: { id: string }) {
                 />
               ))}
             </div>
-          </div>
+          </TraceProvider>
         );
       }}
     </Async>

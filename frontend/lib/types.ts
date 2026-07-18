@@ -123,6 +123,67 @@ export interface ThesisUpdate {
   active: boolean;
 }
 
+// --- Trace (Phase 6 agentic traceability) ---------------------------------
+
+export interface TraceSignal {
+  id: number;
+  source: string;
+  timestamp: string;
+  ingested_at: string;
+  excerpt: string;
+  content: Record<string, unknown>;
+}
+
+export interface TraceStepDetail {
+  // score steps
+  axis?: string;
+  value?: number;
+  score_low?: number | null;
+  score_high?: number | null;
+  cold_start?: boolean;
+  confidence?: number | null;
+  trend?: Trend | null;
+  model?: string | null;
+  validator_note?: string | null;
+  // claim steps
+  claim_id?: number;
+  category?: string | null;
+  claim_source?: string | null;
+  trust_level?: TrustLevel | null;
+  contradiction_note?: string | null;
+  influenced_recommendation?: boolean;
+  // shared
+  memo_section?: string | null;
+  // memo step
+  sections?: string[];
+  core_contradiction?: boolean;
+  // signals step
+  by_source?: Record<string, number>;
+}
+
+export type TraceStepKind = "signals" | "screening" | "score" | "claim" | "memo";
+
+export interface TraceStep {
+  index: number;
+  kind: TraceStepKind;
+  title: string;
+  ref: string | null;
+  status: string | null;
+  summary: string;
+  signal_ids: number[];
+  source_signal_id: number | null;
+  detail: TraceStepDetail;
+}
+
+export interface Trace {
+  application_id: number;
+  company: Company;
+  backend: string | null;
+  memo_recommendation: string | null;
+  signals: TraceSignal[];
+  steps: TraceStep[];
+}
+
 // --- NL query -------------------------------------------------------------
 
 export interface QueryMatch {

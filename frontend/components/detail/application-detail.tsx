@@ -5,26 +5,30 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight, FileText, User } from "lucide-react";
 
 import { api } from "@/lib/api";
-import type { Signal } from "@/lib/types";
+import type { Signal, Trace } from "@/lib/types";
 import { orderedScores } from "@/lib/format";
 import { Async, useFetch } from "@/components/async";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OriginBadge } from "@/components/origin-badge";
+import { TraceProvider } from "@/components/trace/trace-panel";
 import { AxisCard } from "./axis-card";
 import { ClaimsTable } from "./claims-table";
 import { OutreachDraft } from "./outreach-draft";
 
 async function loadDetail(id: string) {
-  const app = await api.application(id);
+  const [app, trace] = await Promise.all([
+    api.application(id),
+    api.trace(id).catch((): Trace | null => null),
+  ]);
   const founders = await Promise.allSettled(app.founders.map((f) => api.founder(f.id)));
   const signalsById = new Map<number, Signal>();
   for (const r of founders) {
     if (r.status === "fulfilled")
       for (const s of r.value.signals) signalsById.set(s.id, s);
   }
-  return { app, signalsById };
+  return { app, signalsById, trace };
 }
 
 function DeckText({ text }: { text: string }) {
@@ -54,13 +58,13 @@ export function ApplicationDetail({ id }: { id: string }) {
 
   return (
     <Async state={state}>
-      {({ app, signalsById }) => {
+      {({ app, signalsById, trace }) => {
         const scores = orderedScores(app.scores);
         const coldStart = scores.some((s) => s.cold_start);
         const screened = app.status === "screened_out";
         const c = app.company;
         return (
-          <div>
+          <TraceProvider trace={trace}>
             <PageHeader
               title={
                 <span className="flex items-center gap-2">
@@ -160,7 +164,7 @@ export function ApplicationDetail({ id }: { id: string }) {
 
               {app.deck_text && <DeckText text={app.deck_text} />}
             </div>
-          </div>
+          </TraceProvider>
         );
       }}
     </Async>
