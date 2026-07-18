@@ -1,0 +1,30 @@
+{
+  "profile_type": "cold_start",
+  "applied_at": "2025-06-15",
+  "deck": "bloomwell_deck.txt",
+  "founder": {
+    "name": "Jamal Okoro",
+    "links": {"linkedin": "https://linkedin.com/in/jamalokoro"},
+    "bio": "Former midwife, nine years in Vienna. First-time, non-technical founder. No prior startups, no code history, no funding, no VC network."
+  },
+  "company": {
+    "name": "Bloomwell",
+    "domain": "bloomwell.care",
+    "sector": "health",
+    "stage": "pre-seed",
+    "geography": "Vienna",
+    "one_liner": "Adaptive mental-health companion for new parents, built on the validated EPDS screening scale."
+  },
+  "signals": [
+    {
+      "source": "blog",
+      "timestamp": "2025-05-02",
+      "content": {"title": "The eleven-week gap: why new parents fall through the cracks", "url": "https://bloomwell.care/blog/eleven-week-gap", "summary": "Specific, first-hand write-up of the postpartum support gap with named triggers (sleep cycles, feeding guilt, identity loss). Strong domain insight, not generic."}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-06-15",
+      "content": {"note": "Cold-start profile: no GitHub, no funding, no network. Evidence base is the deck, one blog post, and a prototype tested with 8 parents from the founder's former clinic. Score on potential, not track record."}
+    }
+  ]
+}

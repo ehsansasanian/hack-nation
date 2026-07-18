@@ -1,0 +1,28 @@
+{
+  "profile_type": "cold_start",
+  "founder": {
+    "name": "Elena Rossi",
+    "links": {"linkedin": "https://linkedin.com/in/elenarossi"},
+    "bio": "Registered nurse, 12 years in NHS discharge coordination. First-time, non-technical founder. No code, no funding, no network."
+  },
+  "company": {
+    "name": "CareLoop",
+    "domain": "careloop.health",
+    "sector": "health",
+    "stage": "pre-seed",
+    "geography": "London",
+    "one_liner": "Discharge follow-up coordination to cut avoidable hospital readmissions."
+  },
+  "signals": [
+    {
+      "source": "blog",
+      "timestamp": "2025-03-08",
+      "content": {"title": "The readmission nobody owns: what I saw at discharge", "url": "https://careloop.health/blog/readmission-nobody-owns", "summary": "First-hand account of why patients bounce back within 30 days and where the coordination handoff breaks. Deep, specific domain insight."}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-06-20",
+      "content": {"note": "Cold-start: no GitHub, no funding, no technical co-founder yet. Only asset is exceptional domain insight and access to two hospital discharge teams willing to pilot."}
+    }
+  ]
+}

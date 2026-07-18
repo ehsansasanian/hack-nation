@@ -1,0 +1,28 @@
+{
+  "profile_type": "cold_start",
+  "founder": {
+    "name": "Yuki Tanaka",
+    "links": {"twitter": "https://twitter.com/yukibuilds"},
+    "bio": "First-time founder. No public GitHub history, no funding, no network. Building in the open on Twitter."
+  },
+  "company": {
+    "name": "Prompture",
+    "domain": "prompture.dev",
+    "sector": "devtools",
+    "stage": "pre-seed",
+    "geography": "Tokyo",
+    "one_liner": "Version control and diffing for LLM prompts, with regression tests on outputs."
+  },
+  "signals": [
+    {
+      "source": "blog",
+      "timestamp": "2025-04-11",
+      "content": {"title": "Prompts are code, but we version them like sticky notes", "url": "https://prompture.dev/blog/prompts-are-code", "summary": "Sharp problem framing on prompt drift and silent regressions. Specific insight, no product yet."}
+    },
+    {
+      "source": "twitter",
+      "timestamp": "2025-05-19",
+      "content": {"text": "Been quietly hacking on prompt versioning for 6 weeks. Early prototype diffs prompts and re-runs eval sets on every change. DM if you want in.", "likes": 74, "author": "yukibuilds"}
+    }
+  ]
+}

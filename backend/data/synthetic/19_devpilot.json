@@ -1,0 +1,34 @@
+{
+  "profile_type": "mid",
+  "founder": {
+    "name": "Oskar Lind",
+    "github_handle": "oskarlind",
+    "links": {"github": "https://github.com/oskarlind"},
+    "bio": "Backend engineer. Building an AI coding-review assistant for small teams."
+  },
+  "company": {
+    "name": "DevPilot",
+    "domain": "devpilot.dev",
+    "sector": "devtools",
+    "stage": "pre-seed",
+    "geography": "Stockholm",
+    "one_liner": "AI code-review bot that enforces a team's own conventions from past PRs."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2024-09-05",
+      "content": {"repo": "oskarlind/devpilot", "stars": 1400, "contributors": 11, "created": "2024-09-05", "primary_language": "Python", "commit_cadence": "several per week"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2025-03-19",
+      "content": {"title": "Show HN: DevPilot - code review that learns your team's conventions", "points": 158, "comments": 64, "author": "oskarlind"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-05-27",
+      "content": {"note": "Solid product, real early users, but the AI-code-review space is filling up fast. Differentiation on convention-learning is promising but unproven at scale."}
+    }
+  ]
+}

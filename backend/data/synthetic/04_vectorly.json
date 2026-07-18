@@ -1,0 +1,34 @@
+{
+  "profile_type": "strong_yes",
+  "founder": {
+    "name": "Ren Ito",
+    "github_handle": "renito",
+    "links": {"github": "https://github.com/renito"},
+    "bio": "Second-time founder. Shimmer (2016-2019) shut down; applying distribution lessons at Vectorly."
+  },
+  "company": {
+    "name": "Vectorly",
+    "domain": "vectorly.io",
+    "sector": "AI infra",
+    "stage": "seed",
+    "geography": "Tokyo",
+    "one_liner": "Managed vector database with sub-10ms recall at billion-scale, tuned for RAG workloads."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2023-10-01",
+      "content": {"repo": "vectorly/vectorly", "stars": 4700, "contributors": 63, "created": "2023-10-01", "primary_language": "Rust", "commit_cadence": "daily"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2024-05-30",
+      "content": {"title": "Show HN: Vectorly - billion-scale vector search in Rust", "points": 388, "comments": 150, "author": "renito"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-02-11",
+      "content": {"note": "Closed a $2.5M seed led by a Tokyo fund. 18 paying customers, distribution via an OSS-to-cloud funnel Ren built deliberately this time."}
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "profile_type": "contradiction",
+  "founder": {
+    "name": "Lena Fischer",
+    "github_handle": "lenafischer",
+    "links": {"github": "https://github.com/lenafischer", "twitter": "https://twitter.com/lenafischer"},
+    "bio": "Data engineer turned founder. Building a customer-analytics layer for B2B SaaS."
+  },
+  "company": {
+    "name": "Cohortiq",
+    "domain": "cohortiq.com",
+    "sector": "AI infra",
+    "stage": "pre-seed",
+    "geography": "Vienna",
+    "one_liner": "Warehouse-native cohort and retention analytics with an LLM query layer."
+  },
+  "signals": [
+    {
+      "source": "twitter",
+      "timestamp": "2025-04-27",
+      "content": {"text": "Big week at Cohortiq - we just crossed 40 enterprise customers. Retention analytics is eating the world.", "likes": 220, "author": "lenafischer"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-05-06",
+      "content": {"note": "Diligence: CRM export shows 3 design partners, none paying, no signed contracts. The public '40 enterprise customers' claim is unsupported.", "contradicts": "traction"}
+    },
+    {
+      "source": "github",
+      "timestamp": "2024-12-15",
+      "content": {"repo": "cohortiq/cohortiq", "stars": 340, "contributors": 5, "created": "2024-12-15", "commit_cadence": "several per week"}
+    }
+  ]
+}

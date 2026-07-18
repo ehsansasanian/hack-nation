@@ -1,0 +1,34 @@
+{
+  "profile_type": "mid",
+  "founder": {
+    "name": "Ben Carter",
+    "github_handle": "bencarter",
+    "links": {"github": "https://github.com/bencarter", "linkedin": "https://linkedin.com/in/bencarter"},
+    "bio": "Ex-hedge-fund analyst. Building a personal-finance copilot for retail investors."
+  },
+  "company": {
+    "name": "Hedgehog",
+    "domain": "hedgehog.money",
+    "sector": "fintech",
+    "stage": "pre-seed",
+    "geography": "New York",
+    "one_liner": "Personal-finance copilot that explains your portfolio risk in plain language."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2024-07-22",
+      "content": {"repo": "bencarter/hedgehog", "stars": 210, "created": "2024-07-22", "commit_cadence": "weekly", "primary_language": "TypeScript"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2025-01-30",
+      "content": {"title": "Show HN: Hedgehog - understand your portfolio risk in plain English", "points": 74, "comments": 33, "author": "bencarter"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-05-14",
+      "content": {"note": "Decent execution, ~1,200 waitlist signups, but consumer fintech distribution is brutal and regulatory exposure is unclear. Mixed."}
+    }
+  ]
+}

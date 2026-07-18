@@ -1,0 +1,24 @@
+Ledgerly - Automated reconciliation for finance teams
+
+Problem
+Month-end close is manual hell. Finance teams reconcile bank feeds against the
+ledger by hand across spreadsheets.
+
+Product
+Ledgerly connects to bank feeds and accounting systems and auto-matches
+transactions, flagging only the exceptions.
+
+Traction
+- $50k MRR, growing 30% month over month
+- 40 paying SMB customers
+- Payback period under 3 months
+
+Team
+- Priya Nair, CEO (ex-Revolut, payments)
+- Team of 5: 3 engineers, 1 designer, 1 GTM
+
+Business model
+$399/month per finance seat. Land-and-expand into mid-market.
+
+Ask
+Raising $1.5M seed to scale sales and hit $200k MRR by year end.

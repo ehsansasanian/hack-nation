@@ -1,0 +1,43 @@
+{
+  "profile_type": "multi_startup_history",
+  "founder": {
+    "name": "Ren Ito",
+    "github_handle": "renito",
+    "links": {
+      "github": "https://github.com/renito",
+      "linkedin": "https://linkedin.com/in/renito"
+    },
+    "bio": "Systems engineer in Tokyo. First company Shimmer (real-time collaboration) shut down in 2019 after failing to find distribution. Now building Vectorly.",
+    "founder_score": 6.5,
+    "score_history": [
+      {"timestamp": "2017-05-01", "score": 4.8, "note": "Shimmer launch; promising tech, weak GTM"},
+      {"timestamp": "2019-08-01", "score": 3.9, "note": "Shimmer wound down - failed to find distribution, honest post-mortem published"},
+      {"timestamp": "2024-06-01", "score": 6.5, "note": "Vectorly rebound - applied hard lessons on distribution, faster traction"}
+    ]
+  },
+  "company": {
+    "name": "Shimmer",
+    "domain": "shimmer.app",
+    "sector": "devtools",
+    "stage": "shut_down",
+    "geography": "Tokyo",
+    "one_liner": "Real-time collaborative editor for design systems. Wound down in 2019."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2016-11-03",
+      "content": {"repo": "renito/shimmer", "stars": 900, "created": "2016-11-03", "primary_language": "TypeScript", "commit_cadence": "sporadic after 2018"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2017-05-14",
+      "content": {"title": "Show HN: Shimmer - realtime collaboration for design systems", "points": 96, "comments": 41, "author": "renito"}
+    },
+    {
+      "source": "blog",
+      "timestamp": "2019-08-20",
+      "content": {"title": "What killed Shimmer: a distribution post-mortem", "url": "https://renito.dev/shimmer-postmortem", "summary": "Honest write-up: great product, no repeatable channel. Ran out of runway."}
+    }
+  ]
+}

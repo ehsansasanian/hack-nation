@@ -1,0 +1,44 @@
+{
+  "profile_type": "multi_startup_history",
+  "founder": {
+    "name": "Aria Voss",
+    "github_handle": "ariavoss",
+    "links": {
+      "github": "https://github.com/ariavoss",
+      "linkedin": "https://linkedin.com/in/ariavoss",
+      "twitter": "https://twitter.com/ariavoss"
+    },
+    "bio": "Infrastructure engineer. Ex-DeepMind inference team. Second-time founder; first company Vecta acquired by GitLab in 2021.",
+    "founder_score": 7.9,
+    "score_history": [
+      {"timestamp": "2019-04-01", "score": 5.6, "note": "Vecta Show HN traction; first-time founder"},
+      {"timestamp": "2021-06-01", "score": 6.8, "note": "Vecta acquired by GitLab - clean outcome, strong execution"},
+      {"timestamp": "2024-03-01", "score": 7.9, "note": "TensorForge open-source momentum; second company"}
+    ]
+  },
+  "company": {
+    "name": "Vecta",
+    "domain": "vecta.io",
+    "sector": "devtools",
+    "stage": "acquired",
+    "geography": "San Francisco",
+    "one_liner": "Local-first CI cache that cut build times for monorepos. Acquired by GitLab (2021)."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2018-09-12",
+      "content": {"repo": "ariavoss/vecta", "stars": 3400, "created": "2018-09-12", "primary_language": "Rust", "commit_cadence": "daily for 30 months"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2019-03-22",
+      "content": {"title": "Show HN: Vecta - a local-first build cache for monorepos", "points": 241, "comments": 88, "author": "ariavoss"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2021-06-01",
+      "content": {"note": "Vecta acquired by GitLab. Team of 6 at exit. Terms undisclosed but reported as a strong acqui-hire+product deal."}
+    }
+  ]
+}

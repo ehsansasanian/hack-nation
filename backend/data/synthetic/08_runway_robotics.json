@@ -1,0 +1,34 @@
+{
+  "profile_type": "contradiction",
+  "founder": {
+    "name": "Sofia Marchetti",
+    "github_handle": "sofiamarchetti",
+    "links": {"github": "https://github.com/sofiamarchetti", "twitter": "https://twitter.com/sofiam_robotics"},
+    "bio": "Robotics researcher. Building warehouse pick-and-place automation."
+  },
+  "company": {
+    "name": "Runway Robotics",
+    "domain": "runwayrobotics.ai",
+    "sector": "AI infra",
+    "stage": "pre-seed",
+    "geography": "Berlin",
+    "one_liner": "Vision-language policies for warehouse pick-and-place arms."
+  },
+  "signals": [
+    {
+      "source": "twitter",
+      "timestamp": "2025-03-15",
+      "content": {"text": "Thrilled to announce Runway Robotics has raised a $2M seed round to automate the warehouse!", "likes": 640, "author": "sofiam_robotics"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-03-28",
+      "content": {"note": "Funding check: no seed round found in any registry or press. Cap table review shows angel checks totaling ~$180k. The '$2M seed' announcement is unsupported.", "contradicts": "funding"}
+    },
+    {
+      "source": "github",
+      "timestamp": "2024-08-19",
+      "content": {"repo": "sofiamarchetti/runway-policies", "stars": 780, "created": "2024-08-19", "primary_language": "Python", "commit_cadence": "steady, real research code"}
+    }
+  ]
+}

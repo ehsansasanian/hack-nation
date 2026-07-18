@@ -1,0 +1,29 @@
+{
+  "profile_type": "mid",
+  "founder": {
+    "name": "Carlos Mendez",
+    "github_handle": "carlosmendez",
+    "links": {"github": "https://github.com/carlosmendez", "linkedin": "https://linkedin.com/in/carlosmendez"},
+    "bio": "Biomedical engineer. Building remote patient monitoring for chronic-care clinics."
+  },
+  "company": {
+    "name": "Vitalink",
+    "domain": "vitalink.health",
+    "sector": "health",
+    "stage": "seed",
+    "geography": "Barcelona",
+    "one_liner": "Remote monitoring platform for chronic-care clinics, integrating home devices into the EHR."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2024-04-18",
+      "content": {"repo": "carlosmendez/vitalink", "stars": 620, "contributors": 8, "created": "2024-04-18", "primary_language": "TypeScript", "commit_cadence": "weekly"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-04-09",
+      "content": {"note": "2 paying clinics, a real integration into one EHR, but long healthcare sales cycles and heavy compliance load. Steady but capital-intensive. Mid-tier."}
+    }
+  ]
+}

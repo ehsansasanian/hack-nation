@@ -1,0 +1,34 @@
+{
+  "profile_type": "strong_yes",
+  "founder": {
+    "name": "Nadia Haddad",
+    "github_handle": "nhaddad",
+    "links": {"github": "https://github.com/nhaddad", "linkedin": "https://linkedin.com/in/nadiahaddad"},
+    "bio": "ML researcher, PhD in efficient training. Three first-author papers on sparse attention before founding Quantify Labs."
+  },
+  "company": {
+    "name": "Quantify Labs",
+    "domain": "quantifylabs.ai",
+    "sector": "AI infra",
+    "stage": "pre-seed",
+    "geography": "San Francisco",
+    "one_liner": "Training-time sparsity toolkit that cuts model training cost without accuracy loss."
+  },
+  "signals": [
+    {
+      "source": "manual",
+      "timestamp": "2024-10-01",
+      "content": {"note": "arXiv: 3 first-author papers on sparse attention (cs.LG), one with 400+ citations. Genuine research depth.", "source_detail": "arxiv"}
+    },
+    {
+      "source": "github",
+      "timestamp": "2024-11-20",
+      "content": {"repo": "quantifylabs/sparsekit", "stars": 5600, "contributors": 41, "created": "2024-11-20", "primary_language": "Python/CUDA", "commit_cadence": "daily"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2025-02-08",
+      "content": {"title": "Show HN: SparseKit - train large models 40% cheaper with structured sparsity", "points": 331, "comments": 120, "author": "nhaddad"}
+    }
+  ]
+}

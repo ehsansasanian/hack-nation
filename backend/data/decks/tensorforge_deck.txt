@@ -1,0 +1,26 @@
+TensorForge - Serving layer for cheap, fast LLM inference
+
+The problem
+Teams shipping LLM features burn 40-70% of their compute budget on inference.
+GPUs sit half-idle because batching and quantization are hard to get right.
+
+Our solution
+A drop-in inference runtime. Point your model at TensorForge; we handle
+continuous batching, speculative decoding, and INT8/FP8 quantization.
+Average measured cost reduction across design partners: 61%.
+
+Traction
+- 12 design partners (7 in production), including two Series B AI startups
+- Open-source core: 8,200 GitHub stars, 190 contributors
+- 34M tokens/day served across pilots
+
+Team
+- Aria Voss, CEO - ex-DeepMind, led inference infra; previously founded Vecta
+  (developer tooling, acquired 2021)
+- 4 engineers, 3 ex-FAANG infra
+
+Market
+$18B AI infrastructure spend in 2025, inference is the fastest-growing slice.
+
+The ask
+Raising a $3M pre-seed to reach general availability and 50 paying teams.

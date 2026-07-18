@@ -1,0 +1,39 @@
+{
+  "profile_type": "strong_yes",
+  "founder": {
+    "name": "Marek Kowalski",
+    "github_handle": "marekk",
+    "links": {"github": "https://github.com/marekk", "twitter": "https://twitter.com/marekk_dev"},
+    "bio": "Prolific open-source maintainer. Core contributor to two widely used build tools before founding Loomctl.",
+    "founder_score": 8.1,
+    "score_history": [
+      {"timestamp": "2023-01-01", "score": 7.4, "note": "Established OSS reputation, strong maintainer signal"},
+      {"timestamp": "2025-01-01", "score": 8.1, "note": "Loomctl front-paged HN, fast org adoption"}
+    ]
+  },
+  "company": {
+    "name": "Loomctl",
+    "domain": "loomctl.dev",
+    "sector": "devtools",
+    "stage": "seed",
+    "geography": "Berlin",
+    "one_liner": "Declarative control plane for internal developer platforms - Terraform for CI/CD."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2023-06-01",
+      "content": {"repo": "loomctl/loomctl", "stars": 11200, "contributors": 310, "created": "2023-06-01", "primary_language": "Go", "commit_cadence": "multiple daily"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2024-09-12",
+      "content": {"title": "Show HN: Loomctl - a declarative control plane for your dev platform", "points": 604, "comments": 260, "author": "marekk", "front_page": true}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-03-02",
+      "content": {"note": "Adopted by 30+ engineering orgs. Reference from a fintech platform team confirmed it replaced 4 internal tools. Clear enterprise pull."}
+    }
+  ]
+}

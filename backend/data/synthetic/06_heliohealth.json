@@ -1,0 +1,35 @@
+{
+  "profile_type": "contradiction",
+  "applied_at": "2025-06-10",
+  "deck": "heliohealth_deck.txt",
+  "founder": {
+    "name": "Tom Beckett",
+    "links": {"linkedin": "https://linkedin.com/in/tombeckett"},
+    "bio": "Intensive care physician, 10 years NHS. First-time founder, non-technical."
+  },
+  "company": {
+    "name": "HelioHealth",
+    "domain": "heliohealth.uk",
+    "sector": "health",
+    "stage": "pre-seed",
+    "geography": "London",
+    "one_liner": "Early sepsis warning model running on routine bedside vitals."
+  },
+  "signals": [
+    {
+      "source": "manual",
+      "timestamp": "2025-06-12",
+      "content": {"note": "Regulatory check: the FDA 510(k) device database shows no submission on file for HelioHealth. Deck states 'FDA 510(k) clearance in progress'.", "contradicts": "traction"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-06-12",
+      "content": {"note": "Pilot verification: one active pilot (letter of intent with a single NHS trust). The other two 'pilots' in the deck are exploratory conversations, not live deployments. Deck claims 'live in 3 hospital pilots'.", "contradicts": "traction"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-05-30",
+      "content": {"note": "Retrospective validation study (AUROC 0.89, 14k admissions) appears genuine - shared the notebook and dataset description. Strong clinical signal."}
+    }
+  ]
+}

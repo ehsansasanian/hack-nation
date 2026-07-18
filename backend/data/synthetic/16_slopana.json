@@ -1,0 +1,30 @@
+{
+  "profile_type": "weak_no",
+  "applied_at": "2025-06-18",
+  "deck": "slopana_deck.txt",
+  "founder": {
+    "name": "Raj Patel",
+    "links": {"twitter": "https://twitter.com/rajpatelweb3"},
+    "bio": "Serial pitch author. Buzzword-heavy positioning, no shipped product."
+  },
+  "company": {
+    "name": "Slopana",
+    "domain": "slopana.io",
+    "sector": "fintech",
+    "stage": "pre-seed",
+    "geography": "San Francisco",
+    "one_liner": "AI-powered blockchain synergy platform for the creator-economy metaverse."
+  },
+  "signals": [
+    {
+      "source": "manual",
+      "timestamp": "2025-06-19",
+      "content": {"note": "No product, no code, no team beyond the founder. Deck is buzzword salad (AI + blockchain + metaverse + creator economy) with no specific problem, customer, or wedge. Crowded, undifferentiated."}
+    },
+    {
+      "source": "twitter",
+      "timestamp": "2025-06-01",
+      "content": {"text": "Slopana is going to disrupt the $250B creator economy with AI + blockchain synergy. Waitlist open!", "likes": 9, "author": "rajpatelweb3"}
+    }
+  ]
+}

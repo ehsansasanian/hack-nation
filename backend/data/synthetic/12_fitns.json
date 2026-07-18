@@ -1,0 +1,28 @@
+{
+  "profile_type": "cold_start",
+  "founder": {
+    "name": "David Klein",
+    "links": {"twitter": "https://twitter.com/davidkleinbuilds"},
+    "bio": "First-time founder, former personal trainer. No GitHub, no funding, no network."
+  },
+  "company": {
+    "name": "Fitns",
+    "domain": "fitns.app",
+    "sector": "health",
+    "stage": "pre-seed",
+    "geography": "Berlin",
+    "one_liner": "Adaptive strength-training plans that adjust to logged performance."
+  },
+  "signals": [
+    {
+      "source": "twitter",
+      "timestamp": "2025-05-25",
+      "content": {"text": "Quitting my PT job to build Fitns - training plans that actually adapt to your logged lifts, not static PDFs. No code yet, learning to build.", "likes": 31, "author": "davidkleinbuilds"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-06-22",
+      "content": {"note": "Cold-start with thin signal: a single tweet, a landing page, no prototype. Crowded consumer fitness space - potential is unproven and problem-founder fit is only moderate."}
+    }
+  ]
+}

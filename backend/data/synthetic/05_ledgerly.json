@@ -1,0 +1,36 @@
+{
+  "profile_type": "contradiction",
+  "applied_at": "2025-06-02",
+  "deck": "ledgerly_deck.txt",
+  "founder": {
+    "name": "Priya Nair",
+    "github_handle": "priyanair",
+    "links": {"linkedin": "https://linkedin.com/in/priyanair"},
+    "bio": "Ex-Revolut payments PM. First-time founder."
+  },
+  "company": {
+    "name": "Ledgerly",
+    "domain": "ledgerly.co",
+    "sector": "fintech",
+    "stage": "pre-seed",
+    "geography": "London",
+    "one_liner": "Automated bank-to-ledger reconciliation for SMB finance teams."
+  },
+  "signals": [
+    {
+      "source": "manual",
+      "timestamp": "2025-06-05",
+      "content": {"note": "Diligence: payment-processor dashboard shared on the call shows $0 processed to date. Company is pre-revenue. The deck's '$50k MRR, 40 paying customers' claim is not supported.", "contradicts": "revenue"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-06-05",
+      "content": {"note": "Headcount check: LinkedIn and the founder's own answers indicate a team of 2 (Priya + one contract engineer). The deck claims a team of 5.", "contradicts": "team"}
+    },
+    {
+      "source": "github",
+      "timestamp": "2025-01-08",
+      "content": {"repo": "ledgerly/core", "stars": 12, "created": "2025-01-08", "commit_cadence": "weekly, single contributor"}
+    }
+  ]
+}

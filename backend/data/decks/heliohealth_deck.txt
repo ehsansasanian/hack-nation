@@ -1,0 +1,24 @@
+HelioHealth - Early sepsis warning from routine vitals
+
+The problem
+Sepsis kills 11 million people a year. Detection is late because the signs are
+subtle and buried in streaming vitals nurses cannot watch continuously.
+
+Our product
+A bedside model that ingests heart rate, temperature, and lab values and raises
+a risk score 6 hours before clinical deterioration.
+
+Clinical validation
+- FDA 510(k) clearance in progress
+- Live in 3 hospital pilots across the NHS
+- AUROC 0.89 on retrospective validation (14,000 admissions)
+
+Team
+- Dr. Tom Beckett, CEO - intensive care physician, 10 years NHS
+- 2 ML engineers
+
+Market
+$4.2B hospital clinical decision support market.
+
+Ask
+Raising GBP 1.2M to complete FDA submission and expand to 10 hospitals.

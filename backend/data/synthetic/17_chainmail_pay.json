@@ -1,0 +1,29 @@
+{
+  "profile_type": "weak_no",
+  "founder": {
+    "name": "Greg Voss",
+    "github_handle": "gregvoss",
+    "links": {"github": "https://github.com/gregvoss"},
+    "bio": "First-time founder. Building yet another crypto payments gateway."
+  },
+  "company": {
+    "name": "Chainmail Pay",
+    "domain": "chainmailpay.com",
+    "sector": "fintech",
+    "stage": "pre-seed",
+    "geography": "London",
+    "one_liner": "Crypto payment gateway for online merchants."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2024-05-10",
+      "content": {"repo": "gregvoss/chainmail-pay", "stars": 18, "created": "2024-05-10", "commit_cadence": "abandoned after 2024-09", "primary_language": "JavaScript"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-04-02",
+      "content": {"note": "Extremely crowded category (Stripe, Coinbase Commerce, BitPay, dozens more). No differentiation, no traction, repo inactive since September. Weak."}
+    }
+  ]
+}

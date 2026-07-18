@@ -1,0 +1,26 @@
+Bloomwell - Mental health support for new parents
+
+Why me, why now
+I spent nine years as a midwife in Vienna. I watched hundreds of new parents
+slide into anxiety and postnatal depression with nowhere to turn between the
+six-week checkup and a crisis. The system only catches them when it is already
+bad.
+
+The problem, specifically
+- 1 in 5 new mothers experiences a perinatal mood disorder
+- The median wait for specialist support is 11 weeks
+- Generic meditation apps ignore the specific triggers of the postpartum period
+  (sleep deprivation cycles, feeding guilt, identity loss)
+
+What I am building
+A guided companion that adapts to the postpartum timeline week by week, with
+screening built from the validated EPDS scale and escalation to a human when
+risk crosses a threshold. Not another content library - a triage layer.
+
+Where I am
+- Working prototype tested with 8 parents from my former clinic
+- No funding, no co-founder yet, no revenue
+- Deep relationships with two midwife networks who will refer
+
+What I need
+A first check to hire one clinical engineer and run a proper 50-parent study.

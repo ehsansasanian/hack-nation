@@ -1,0 +1,39 @@
+{
+  "profile_type": "strong_yes",
+  "applied_at": "2025-05-20",
+  "deck": "tensorforge_deck.txt",
+  "founder": {
+    "name": "Aria Voss",
+    "github_handle": "ariavoss",
+    "links": {
+      "github": "https://github.com/ariavoss",
+      "linkedin": "https://linkedin.com/in/ariavoss"
+    },
+    "bio": "Ex-DeepMind inference infra. Second-time founder (Vecta -> GitLab, 2021)."
+  },
+  "company": {
+    "name": "TensorForge",
+    "domain": "tensorforge.dev",
+    "sector": "AI infra",
+    "stage": "pre-seed",
+    "geography": "San Francisco",
+    "one_liner": "Drop-in inference runtime that cuts LLM serving cost with continuous batching and quantization."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2024-02-10",
+      "content": {"repo": "tensorforge/forge", "stars": 8200, "contributors": 190, "created": "2024-02-10", "primary_language": "C++/Python", "commit_cadence": "multiple daily"}
+    },
+    {
+      "source": "hn",
+      "timestamp": "2024-11-04",
+      "content": {"title": "Show HN: TensorForge - 60% cheaper LLM inference, open source", "points": 512, "comments": 210, "author": "ariavoss"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-04-18",
+      "content": {"note": "12 design partners, 7 in production. Reference call with a Series B customer confirmed ~60% cost reduction and 34M tokens/day served."}
+    }
+  ]
+}

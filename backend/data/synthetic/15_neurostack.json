@@ -1,0 +1,29 @@
+{
+  "profile_type": "strong_yes",
+  "founder": {
+    "name": "Mia Chen",
+    "github_handle": "miachen",
+    "links": {"github": "https://github.com/miachen", "linkedin": "https://linkedin.com/in/miachen"},
+    "bio": "Ex-Stripe staff engineer on the ML platform team. Deep systems background."
+  },
+  "company": {
+    "name": "NeuroStack",
+    "domain": "neurostack.ai",
+    "sector": "AI infra",
+    "stage": "seed",
+    "geography": "San Francisco",
+    "one_liner": "Feature store and online inference platform for real-time fraud and risk models."
+  },
+  "signals": [
+    {
+      "source": "github",
+      "timestamp": "2024-03-14",
+      "content": {"repo": "neurostack/neurostack", "stars": 3900, "contributors": 52, "created": "2024-03-14", "primary_language": "Go/Python", "commit_cadence": "daily"}
+    },
+    {
+      "source": "manual",
+      "timestamp": "2025-01-15",
+      "content": {"note": "5 paying customers including two fintechs. Founder's Stripe pedigree is a strong credibility signal for the risk/fraud use case."}
+    }
+  ]
+}
