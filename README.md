@@ -88,12 +88,15 @@ uv run python -m app.reasoning.diligence_all     # claims, trust, validator, mem
 
 ## API surface
 
+Applying through the UI (or `POST /applications`) kicks off the whole chain automatically: the app is created with `analysis_status=received` and screening -> scoring -> diligence -> memo run in the background, so the applicant lands on the detail page and watches a live stepper fill in as each stage's data arrives (polling `GET /applications/{id}`, which now carries `analysis_status`/`analysis_error`). Terminal states are `ready`, `screened_out` (screening rejected it, chain stopped) and `failed`.
+
 Full docs at `http://127.0.0.1:8000/docs`. Key endpoints:
 
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /pipeline` | Ranked applications with the 3 axis scores per row (filter by `status`, `origin`) |
-| `POST /applications` | Inbound apply (company name + deck text) |
+| `POST /applications` | Inbound apply (company name + deck text). Runs the full analysis chain in the background by default (`?auto_analyze=false` to skip); returns immediately with `analysis_status=received` |
+| `POST /applications/{id}/analyze` | Manually (re)run the auto-analysis chain (screening -> scoring -> diligence -> memo). Idempotent: no-op while a run is in flight or already `ready`; `?force=true` re-runs a completed one |
 | `POST /applications/{id}/score` | thesis filter -> screening -> 3-axis scoring (`?force=true`, `?backend=offline\|openai`) |
 | `POST /applications/{id}/diligence` | claim extraction -> per-claim truth-gap -> validator |
 | `GET\|POST /applications/{id}/memo` | fetch / generate the investment memo |
