@@ -11,7 +11,7 @@ Three layers - **Memory** (what we know), **Intelligence** (how we reason), **Ex
 ```mermaid
 flowchart TB
     subgraph EXP["Experience layer - Next.js investor dashboard"]
-        UI["Pipeline · Application detail · Memo · Why? trace · Thesis · Founder · Apply · Sourcing"]
+        UI["Landing · Pipeline · Application detail · Memo · Why? trace · Mandate · Founder · Apply · Sourcing"]
     end
 
     subgraph INT["Intelligence layer - reasoning (dual backend: OpenAI or offline-deterministic)"]
@@ -88,20 +88,22 @@ uv run python -m app.reasoning.diligence_all     # claims, trust, validator, mem
 
 ## API surface
 
-Applying through the UI (or `POST /applications`) kicks off the whole chain automatically: the app is created with `analysis_status=received` and screening -> scoring -> diligence -> memo run in the background, so the applicant lands on the detail page and watches a live stepper fill in as each stage's data arrives (polling `GET /applications/{id}`, which now carries `analysis_status`/`analysis_error`). Terminal states are `ready`, `screened_out` (screening rejected it, chain stopped) and `failed`.
+Applying through the UI (or `POST /applications`) kicks off the whole chain automatically: the app is created with `analysis_status=received` and enriching -> screening -> scoring -> diligence -> memo run in the background, so the applicant lands on the detail page and watches a live stepper fill in as each stage's data arrives (polling `GET /applications/{id}`, which now carries `analysis_status`/`analysis_error`). Terminal states are `ready`, `screened_out` (screening rejected it, chain stopped) and `failed`.
+
+The optional `founders` array on the apply payload carries self-declared per-founder links (`github`, `linkedin`, `website`, `x`). The `enriching` stage - which runs **before** screening - fetches each one through the shared ingestion pipeline: GitHub via REST (profile + top repos), a website via HTTP fetch + LLM extraction, and auth-walled LinkedIn/X recorded as `blocked` self-declared references (content is only ever stored when actually retrieved - nothing is fabricated). The per-source outcome lands on `enrichment_report` (`{source: {outcome, signal_count}}`) in every application response, and the fetched signals flow into scoring, diligence, memo, and the trace like any other evidence (a rich fetched GitHub takes a founder off cold-start; a deck claim can be verified or contradicted against the fetched data). Missing links never penalize - cold-start protection stays.
 
 Full docs at `http://127.0.0.1:8000/docs`. Key endpoints:
 
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /pipeline` | Ranked applications with the 3 axis scores per row (filter by `status`, `origin`) |
-| `POST /applications` | Inbound apply (company name + deck text). Runs the full analysis chain in the background by default (`?auto_analyze=false` to skip); returns immediately with `analysis_status=received` |
+| `POST /applications` | Inbound apply (company name + deck text + optional per-founder `founders[]` links). Runs the full analysis chain (enriching -> screening -> scoring -> diligence -> memo) in the background by default (`?auto_analyze=false` to skip); returns immediately with `analysis_status=received` |
 | `POST /applications/{id}/analyze` | Manually (re)run the auto-analysis chain (screening -> scoring -> diligence -> memo). Idempotent: no-op while a run is in flight or already `ready`; `?force=true` re-runs a completed one |
 | `POST /applications/{id}/score` | thesis filter -> screening -> 3-axis scoring (`?force=true`, `?backend=offline\|openai`) |
 | `POST /applications/{id}/diligence` | claim extraction -> per-claim truth-gap -> validator |
 | `GET\|POST /applications/{id}/memo` | fetch / generate the investment memo |
 | `GET /applications/{id}/trace` | the full reasoning chain (Phase 6), assembled from existing rows |
-| `GET /applications/{id}` | application detail (scores, claims, deck, founders) |
+| `GET /applications/{id}` | application detail (scores, claims, deck, founders, `enrichment_report`, `declared_links`) |
 | `POST /query` | natural-language pipeline search (parse -> filter -> rerank with per-result rationale) |
 | `GET /founders/{id}` | founder profile with persistent score history |
 | `GET\|PUT /thesis` | investment thesis configuration |
@@ -137,6 +139,10 @@ Trust is assigned **per claim, not per company**. Each extracted claim is cross-
 
 Founder, Market, and Idea-vs-Market are scored in three independent calls with per-axis evidence, stored and displayed separately. There is no blended number - the recommendation cites all three verbatim. A strong-founder / weak-idea company and a weak-founder / strong-idea company must not collapse to the same 6/10.
 
+### Inbound enrichment from self-declared links
+
+An applicant can attach per-founder links (GitHub, LinkedIn, personal site, X) on apply. A dedicated `enriching` stage - first in the auto-analysis chain, `app/ingestion/enrichment.py` - fetches each through the **same** ingestion pipeline every other signal uses, so enrichment signals are source-tagged (`github`/`web`/`linkedin`/`x`), timestamped, deduplicated, and entity-resolved onto the founder with no downstream special-casing. Three honesty rules hold the feature together: content becomes evidence **only if actually retrieved** (auth-walled LinkedIn/X are stored as `blocked` self-declared references, never fabricated); fetch failures are recorded per source but **never fail the chain**; and because enrichment runs before screening, cold-start detection and every axis see the fetched evidence - a founder with real fetched GitHub history is no longer cold-start, and a deck claim ("500k followers") gets **contradicted** against the real profile. Re-running is idempotent (stable dedup keys -> zero duplicate signals). Iterate offline with `VC_BRAIN_LLM=offline` (the website extractor stores a cleaned text excerpt instead of calling the LLM).
+
 ### Traceability assembled from evidence, not a parallel log
 
 `GET /applications/{id}/trace` reconstructs the full chain - signals ingested -> screening -> per-axis scoring -> claims + truth-gap -> memo - purely from the rows the pipeline already writes (evidence signal ids, rationales, validator notes, trust levels, provenance). No separate trace table duplicates the data. The "Why?" panel renders, for any axis or claim, the exact signals it reasoned over, the rationale that cited them, the validator outcome, and where it landed in the memo.
@@ -146,14 +152,15 @@ Founder, Market, and Idea-vs-Market are scored in three independent calls with p
 The click-path a judge should take (everything except the final live scan runs with the network off):
 
 1. **Rebuild the baseline** - `cd backend && uv run python -m app.demo_seed`, start both servers.
-2. **Pipeline** (`/`) - 7 inbound applications ranked on three independent axis chips (never one number), with a trust summary and origin badges. Try the NL query bar: _"technical founder, AI infra, no prior VC backing"_.
-3. **TensorForge** (`/applications/1`) - a clear yes: three strong axes, all claims verified. Click **Why?** on the Founder axis to walk the signal -> rationale -> validator -> memo chain.
-4. **Ledgerly** (`/applications/2`) - the Trust Score catches the lie: _"$50k MRR"_ is **contradicted** by a diligence note showing $0 processed. Click **Why?** on that claim to see both sources side by side.
-5. **Memo** (`/applications/2/memo`) - a `pass` recommendation, explicit "Not disclosed" gap callouts, every claim carrying its trust badge.
-6. **Cold-start** (`/applications/6`, Bloomwell) - a founder with no track record scored on **potential as a range** with honest low confidence, not zeroed out.
-7. **Thesis** (`/thesis`) - edit sectors/stage/geo/check size; re-run scoring to re-rank the pipeline.
-8. **Founder** (`/founders/1`, Aria Voss) - the persistent Founder Score history across companies and scoring runs.
-9. **Live sourcing** (`/sourcing`, needs network) - hit **Scan** to pull real GitHub/HN founders into the same funnel with a drafted outreach message.
+2. **Landing** (`/`) - a slim entry page with two doors: **Investors** (the pipeline dashboard and the rest of the desk) and **Searching Investment** (the founder-facing apply flow at `/apply`). The investor nav only appears once you enter the desk.
+3. **Pipeline** (`/pipeline`) - 7 inbound applications ranked on three independent axis chips (never one number), with a trust summary and origin badges. Use the structured search chips under the bar (attributes, plus sectors/stages/geographies present in the data), or the NL query bar: _"technical founder, AI infra, no prior VC backing"_.
+4. **TensorForge** (`/applications/1`) - a clear yes: three strong axes, all claims verified. A **Returning founder** badge flags Aria Voss's prior company (Vecta) and her persistent Founder Score, linking straight to her profile. Click **Why?** on the Founder axis to walk the signal -> rationale -> validator -> memo chain.
+5. **Ledgerly** (`/applications/2`) - the Trust Score catches the lie: _"$50k MRR"_ is **contradicted** by a diligence note showing $0 processed. Click **Why?** on that claim to see both sources side by side.
+6. **Memo** (`/applications/2/memo`) - a `pass` recommendation, explicit "Not disclosed" gap callouts, every claim carrying its trust badge. **Download PDF** prints a clean, chrome-free sheet via the print stylesheet.
+7. **Cold-start** (`/applications/6`, Bloomwell) - a founder with no track record scored on **potential as a range** with honest low confidence, not zeroed out.
+8. **Mandate** (`/mandate`) - edit sectors/stage/geo/check size; re-run scoring to re-rank the pipeline. (Old `/thesis` links redirect here.)
+9. **Founder** (`/founders/1`, Aria Voss) - the persistent Founder Score history across companies and scoring runs.
+10. **Live sourcing** (`/sourcing`, needs network) - hit **Scan** to pull real GitHub/HN founders into the same funnel with a drafted outreach message.
 
 ## Repository layout
 
@@ -161,13 +168,13 @@ The click-path a judge should take (everything except the final live scan runs w
 backend/
   app/
     api/          # FastAPI routers (applications, pipeline, query, thesis, sourcing, founders)
-    ingestion/    # one pipeline: normalize -> dedup -> entity-resolve; synthetic loader; deck parser
+    ingestion/    # one pipeline: normalize -> dedup -> entity-resolve; synthetic loader; deck parser; inbound link enrichment
     reasoning/    # thesis fit, screening, 3-axis scoring, cold-start, diligence, validator, memo, trace
     sourcing/     # live GitHub / HN / arXiv scanners + outreach draft
     demo_seed.py  # one-command deterministic offline rebuild
   data/           # committed synthetic profiles + pitch decks (nothing generated at runtime)
 frontend/
-  app/            # routes: pipeline, application detail, memo, thesis, founder, apply, sourcing
+  app/            # routes: landing, pipeline, application detail, memo, mandate, founder, apply, sourcing
   components/     # detail, memo, founder, pipeline, trace ("Why?" panel), shared UI
   lib/            # typed API client, shared types, formatters
 ```
