@@ -27,8 +27,12 @@ from app.reasoning.context import build_context
 # Sources whose text is a self-asserted claim (vs objective evidence). The deck is
 # always a claim source; these are the public-post equivalents.
 SELF_ASSERTED_SOURCES = {"twitter", "blog"}
-# Sources that count as checkable evidence for the truth-gap.
-EVIDENCE_SOURCES = {"manual", "github", "hn"}
+# Sources that count as checkable evidence for the truth-gap. ``web`` is here because
+# it is *externally fetched* website content (facts extracted from a real page), so
+# it can verify or contradict a deck claim. Self-declared-but-unfetched references
+# (linkedin / x, recorded ``blocked``) are deliberately NOT evidence - they can lift
+# nothing beyond ``unverified``.
+EVIDENCE_SOURCES = {"manual", "github", "hn", "web"}
 
 
 @dataclass(slots=True)

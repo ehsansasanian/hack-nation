@@ -235,7 +235,10 @@ class OfflineDiligenceBackend(DiligenceBackend):
         self, ctx: DiligenceContext, claims: list[ExtractedClaim]
     ) -> list[ClaimAssessment]:
         drop = _drop_names(ctx)
-        manual = [s for s in ctx.evidence_signals if s.source == "manual"]
+        # ``web`` is externally fetched textual evidence: it can topically corroborate a
+        # claim (-> consistent) but, lacking a diligence ``note``/``contradicts`` marker,
+        # never forces verified/contradicted offline - the LLM path does real matching.
+        manual = [s for s in ctx.evidence_signals if s.source in ("manual", "web")]
         metrics = [s for s in ctx.evidence_signals if s.source in ("github", "hn")]
         return [self._assess_one(c, manual, metrics, drop) for c in claims]
 

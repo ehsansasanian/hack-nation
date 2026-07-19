@@ -84,6 +84,11 @@ def _excerpt(sig: Signal) -> str:
     if c.get("repo"):
         stars = c.get("stars")
         return f"{c['repo']}" + (f" - {stars} stars" if stars is not None else "")
+    if c.get("kind") == "profile" and c.get("handle"):
+        followers = c.get("followers")
+        return f"GitHub @{c['handle']}" + (f" - {followers} followers" if followers is not None else "")
+    if c.get("kind") == "website":
+        return f"Website {c.get('url', '')}".strip()
     if c.get("kind") == "inbound_application":
         return "Inbound deck submission"
     if c.get("kind") == "pitch_deck":
