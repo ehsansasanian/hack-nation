@@ -134,6 +134,7 @@ export const SOURCE_TINT: Record<string, string> = {
   github: "border-zinc-200 bg-zinc-50 text-zinc-700",
   hn: "border-orange-200 bg-orange-50 text-orange-700",
   arxiv: "border-red-200 bg-red-50 text-red-700",
+  news: "border-cyan-200 bg-cyan-50 text-cyan-700",
   deck: "border-blue-200 bg-blue-50 text-blue-700",
   manual: "border-violet-200 bg-violet-50 text-violet-700",
   synthetic: "border-zinc-200 bg-zinc-50 text-zinc-600",

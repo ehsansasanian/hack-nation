@@ -25,12 +25,14 @@ from sqlalchemy.orm import Session
 
 from app.ingestion.pipeline import RawSignal, ingest_signal
 from app.models import Application, Company, Founder, Score, Signal, Thesis
+from app.reasoning.analysis import derive_analysis_status
 from app.reasoning.service import score_application
 from app.reasoning.thesis_fit import thesis_fit
 from app.sourcing.arxiv import scan_arxiv
 from app.sourcing.client import SourcingError
 from app.sourcing.github import scan_github
 from app.sourcing.hn import scan_hn
+from app.sourcing.news import scan_news
 from app.sourcing.outreach import draft_outreach
 
 # A candidate must reach this on its strongest axis to warrant a draft outreach.
@@ -41,8 +43,11 @@ SCANNERS: dict[str, Callable[..., list[RawSignal]]] = {
     "github": scan_github,
     "hn": scan_hn,
     "arxiv": scan_arxiv,
+    "news": scan_news,
 }
-DEFAULT_SOURCES = ("github", "hn")  # arxiv is opt-in: papers enrich founders, not the funnel
+# arxiv/news are opt-in: papers enrich founders and news enriches/corroborates
+# companies, but neither independently drives the funnel (see _converge_company).
+DEFAULT_SOURCES = ("github", "hn")
 
 
 @dataclass(slots=True)
@@ -138,6 +143,13 @@ def _converge_company(
     company = session.get(Company, company_id)
     if company is None:
         return None
+    # Convergence requires an identified, screenable founder. Sources like news
+    # can touch a company (a headline mention) without resolving a foundable
+    # person; those signals enrich Memory but must never fabricate an outbound
+    # application. A news mention of a company that *does* have a founder (e.g.
+    # also sourced from GitHub/HN) still converges - through the same rules.
+    if not company.founders:
+        return None
     signals = list(session.scalars(select(Signal).where(Signal.company_id == company_id)).all())
     source, handle, why = _provenance(company, signals)
 
@@ -157,6 +169,12 @@ def _converge_company(
         outcome = score_application(session, application.id)
         status = outcome.status
         scores = {s.axis: s.value for s in outcome.scores}
+        # Scoring already ran at scan time; stamp analysis_status to reflect that
+        # (scored - diligence pending) instead of leaving it at the "received"
+        # default, so the detail page shows "run analysis for full diligence"
+        # rather than "queued". Reuses the same derivation the batch stamp uses.
+        application.analysis_status = derive_analysis_status(application)
+        session.commit()
     else:
         status = application.status
         scores = {
