@@ -43,6 +43,16 @@ def put_thesis(payload: ThesisUpdate, session: Session = Depends(get_session)) -
     thesis.ownership_target = payload.ownership_target
     thesis.risk_appetite = payload.risk_appetite
     thesis.active = payload.active
+    # Phase 8: fund guidelines + investor-vocabulary mandate constraints.
+    thesis.investment_principles = payload.investment_principles
+    thesis.axis_notes = payload.axis_notes
+    thesis.valuation_cap = payload.valuation_cap
+    thesis.instrument = payload.instrument
+    thesis.business_model = payload.business_model
+    thesis.min_arr_usd = payload.min_arr_usd
+    thesis.min_growth_rate = payload.min_growth_rate
+    thesis.require_technical_founder = payload.require_technical_founder
+    thesis.exclusions = payload.exclusions
     session.commit()
     session.refresh(thesis)
     return thesis

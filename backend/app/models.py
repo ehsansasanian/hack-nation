@@ -155,6 +155,9 @@ class Score(Base):
     # Validator (self-correction) refutation of this axis rationale, if any. None =
     # the rationale survived the refutation pass.
     validator_note: Mapped[str | None] = mapped_column(Text)
+    # Whether the validator could support this axis rationale against its cited
+    # evidence. None = not validated yet; False = refuted (feeds the memo Bear case).
+    validator_supported: Mapped[bool | None] = mapped_column()
 
     application: Mapped["Application"] = relationship(back_populates="scores")
 
@@ -193,6 +196,24 @@ class Thesis(Base):
     ownership_target: Mapped[str | None] = mapped_column(String)
     risk_appetite: Mapped[str | None] = mapped_column(String)
     active: Mapped[bool] = mapped_column(default=True)
+    # --- Phase 8: customizable fund guidelines (free-text, injected into prompts) ---
+    # Free-text investment principles + per-axis emphasis notes ({founder/market/
+    # idea_vs_market: str}). Injected into screening AND the axis prompts; the
+    # injection is surfaced as its own step in the reasoning trace. NEVER configurable:
+    # axis weights/averaging, trust levels, diligence honesty.
+    investment_principles: Mapped[str | None] = mapped_column(Text)
+    axis_notes: Mapped[dict] = mapped_column(JSON, default=dict)
+    # --- Phase 8: investor-vocabulary mandate constraints (each gates/informs) ---
+    # Curated additions only - things evaluable from data we can actually hold. Each
+    # is compared against the realized/claimed value in the memo's "Mandate fit" block
+    # (met / gap / unknown) and threaded into the mandate rubric the prompts see.
+    valuation_cap: Mapped[str | None] = mapped_column(String)  # entry valuation ceiling
+    instrument: Mapped[str | None] = mapped_column(String)  # SAFE / priced / convertible
+    business_model: Mapped[str | None] = mapped_column(String)  # B2B SaaS / marketplace / deep tech / PLG
+    min_arr_usd: Mapped[float | None] = mapped_column(Float)  # ARR floor (traction gate)
+    min_growth_rate: Mapped[str | None] = mapped_column(String)  # growth-rate floor, e.g. "15% MoM"
+    require_technical_founder: Mapped[bool] = mapped_column(default=False)
+    exclusions: Mapped[list] = mapped_column(JSON, default=list)  # excluded sectors / no-invest terms (hard filter)
 
 
 class Memo(Base):

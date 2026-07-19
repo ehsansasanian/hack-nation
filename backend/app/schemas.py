@@ -151,6 +151,16 @@ class ThesisOut(_ORM):
     ownership_target: str | None = None
     risk_appetite: str | None = None
     active: bool = True
+    # --- Phase 8: customizable fund guidelines + investor-vocabulary constraints ---
+    investment_principles: str | None = None
+    axis_notes: dict | None = None  # {founder/market/idea_vs_market: emphasis note}
+    valuation_cap: str | None = None
+    instrument: str | None = None
+    business_model: str | None = None
+    min_arr_usd: float | None = None
+    min_growth_rate: str | None = None
+    require_technical_founder: bool | None = None
+    exclusions: list | None = None
 
 
 class ThesisUpdate(BaseModel):
@@ -162,6 +172,16 @@ class ThesisUpdate(BaseModel):
     ownership_target: str | None = None
     risk_appetite: str | None = None
     active: bool = True
+    # --- Phase 8 (all optional; omitting a field clears/keeps it as sent) ---
+    investment_principles: str | None = None
+    axis_notes: dict[str, str] = {}
+    valuation_cap: str | None = None
+    instrument: str | None = None
+    business_model: str | None = None
+    min_arr_usd: float | None = None
+    min_growth_rate: str | None = None
+    require_technical_founder: bool = False
+    exclusions: list[str] = []
 
 
 class ThesisFitOut(BaseModel):

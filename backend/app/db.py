@@ -37,7 +37,20 @@ _ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
     },
     # Phase 4 traceability columns (signal -> claim -> trust -> memo chain).
     "claims": {"source": "TEXT", "validator_note": "TEXT"},
-    "scores": {"validator_note": "TEXT"},
+    # ``validator_supported`` (Phase 8) feeds the memo Bear case: a refuted axis.
+    "scores": {"validator_note": "TEXT", "validator_supported": "BOOLEAN"},
+    # Phase 8: customizable fund guidelines + investor-vocabulary mandate constraints.
+    "theses": {
+        "investment_principles": "TEXT",
+        "axis_notes": "JSON",
+        "valuation_cap": "TEXT",
+        "instrument": "TEXT",
+        "business_model": "TEXT",
+        "min_arr_usd": "FLOAT",
+        "min_growth_rate": "TEXT",
+        "require_technical_founder": "BOOLEAN DEFAULT 0",
+        "exclusions": "JSON",
+    },
 }
 
 
