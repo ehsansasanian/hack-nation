@@ -102,6 +102,7 @@ Full docs at `http://127.0.0.1:8000/docs`. Key endpoints:
 | `POST /applications/{id}/score` | thesis filter -> screening -> 3-axis scoring (`?force=true`, `?backend=offline\|openai`) |
 | `POST /applications/{id}/diligence` | claim extraction -> per-claim truth-gap -> validator |
 | `GET\|POST /applications/{id}/memo` | fetch / generate the investment memo |
+| `GET\|POST /applications/{id}/recombine` | co-founder & idea recombination for a low-scoring app: complementary founders from Memory + idea pivots + a hypothetical contingent IC note (`GET .../recombination` fetches a stored one) |
 | `GET /applications/{id}/trace` | the full reasoning chain (Phase 6), assembled from existing rows |
 | `GET /applications/{id}` | application detail (scores, claims, deck, founders, `enrichment_report`, `declared_links`) |
 | `POST /query` | natural-language pipeline search (parse -> filter -> rerank with per-result rationale) |
@@ -143,6 +144,14 @@ Founder, Market, and Idea-vs-Market are scored in three independent calls with p
 
 An applicant can attach per-founder links (GitHub, LinkedIn, personal site, X) on apply. A dedicated `enriching` stage - first in the auto-analysis chain, `app/ingestion/enrichment.py` - fetches each through the **same** ingestion pipeline every other signal uses, so enrichment signals are source-tagged (`github`/`web`/`linkedin`/`x`), timestamped, deduplicated, and entity-resolved onto the founder with no downstream special-casing. Three honesty rules hold the feature together: content becomes evidence **only if actually retrieved** (auth-walled LinkedIn/X are stored as `blocked` self-declared references, never fabricated); fetch failures are recorded per source but **never fail the chain**; and because enrichment runs before screening, cold-start detection and every axis see the fetched evidence - a founder with real fetched GitHub history is no longer cold-start, and a deck claim ("500k followers") gets **contradicted** against the real profile. Re-running is idempotent (stable dedup keys -> zero duplicate signals). Iterate offline with `VC_BRAIN_LLM=offline` (the website extractor stores a cleaned text excerpt instead of calling the LLM).
 
+### Team as the unit of the Founder axis (not a fourth axis)
+
+Teams get funded, not ideas, so complementarity is an **input to the existing Founder axis**, never a fourth axis (the brief fixes three). The apply form takes repeatable founder entries; every declared co-founder is a first-class founder - entity-resolved onto the company (a co-founder already in Memory attaches their prior history + persistent Founder Score), enriched through the same link-fetch stage, and folded into one team read (`app/reasoning/team.py`): technical vs commercial coverage, domain gaps relative to the idea, prior-collaboration signal, and the solo-founder case (a flagged risk with rationale, never an automatic penalty). A mixed track-record + cold-start team is scored honestly per founder rather than zeroed, the persistent Founder Score updates for **each** founder, and when multi-founder data exists the memo gains a **Team & history** section naming the complementarity verdict. The same deterministic read backs both the offline scorer and the memo, so the score and the prose never disagree.
+
+### Co-founder & idea recombination (hypothetical)
+
+For a **low-scoring** application the brain asks a different question than invest-or-pass: _what would make this investible?_ `app/reasoning/recombination.py` reads the weak axes and team gaps from stored scores (never re-scoring), searches Memory for complementary founders - skill/domain fit, with `availability` defined as **not tied to an active in-thesis application** (a founder we are already funding is off the market; one whose ventures exited, wound down, were screened out, or fall out of thesis is recombinable talent) - suggests idea pivots, and emits a **contingent IC note** ("investible if X joins / pivot validated - re-evaluate in N weeks"). It is stored in its own `recombination_notes` table, next to (never inside) the memo, and is labeled **hypothetical** on every surface: generating one never mutates a real Score. Dual backend stays consistent - the candidate shortlist, gaps, and pivots are fully deterministic on both paths; only the closing narrative differs (a cheap `gpt-4o-mini` note on the OpenAI path, a deterministic template offline). In the UI it surfaces as a violet, `Hypothetical`-badged card on any screened-out / cold-start / weak-axis application detail.
+
 ### Traceability assembled from evidence, not a parallel log
 
 `GET /applications/{id}/trace` reconstructs the full chain - signals ingested -> screening -> per-axis scoring -> claims + truth-gap -> memo - purely from the rows the pipeline already writes (evidence signal ids, rationales, validator notes, trust levels, provenance). No separate trace table duplicates the data. The "Why?" panel renders, for any axis or claim, the exact signals it reasoned over, the rationale that cited them, the validator outcome, and where it landed in the memo.
@@ -158,9 +167,11 @@ The click-path a judge should take (everything except the final live scan runs w
 5. **Ledgerly** (`/applications/2`) - the Trust Score catches the lie: _"$50k MRR"_ is **contradicted** by a diligence note showing $0 processed. Click **Why?** on that claim to see both sources side by side.
 6. **Memo** (`/applications/2/memo`) - a `pass` recommendation, explicit "Not disclosed" gap callouts, every claim carrying its trust badge. **Download PDF** prints a clean, chrome-free sheet via the print stylesheet.
 7. **Cold-start** (`/applications/6`, Bloomwell) - a founder with no track record scored on **potential as a range** with honest low confidence, not zeroed out.
-8. **Mandate** (`/mandate`) - edit sectors/stage/geo/check size; re-run scoring to re-rank the pipeline. (Old `/thesis` links redirect here.)
-9. **Founder** (`/founders/1`, Aria Voss) - the persistent Founder Score history across companies and scoring runs.
-10. **Live sourcing** (`/sourcing`, needs network) - hit **Scan** to pull real GitHub/HN founders into the same funnel with a drafted outreach message.
+8. **Recombination** (`/applications/5`, Runway Robotics) - a below-the-bar application shows a violet, `Hypothetical`-badged **Recombination** card. Hit **Explore recombination**: the brain proposes complementary co-founders from Memory (with why-complementary rationale and an availability note), suggests idea pivots, and writes a **contingent IC note** ("investible if X joins / pivot validated - re-evaluate in N weeks"). The three real axis scores are untouched.
+9. **Apply as a team** (`/apply`, the _Searching Investment_ door) - submit a company with **repeatable founder entries** ("+ Add co-founder"), each with optional GitHub/LinkedIn/site/X links. Watch the live stepper run `enriching` (per-source outcomes: GitHub fetched, LinkedIn blocked-as-reference) -> screening -> scoring -> diligence -> memo. The memo's **Team & history** section names the complementarity verdict; a co-founder already in Memory attaches their prior history and returning-founder badge.
+10. **Mandate** (`/mandate`) - edit sectors/stage/geo/check size, plus free-text fund guidelines and investor-vocabulary constraints (business model, ARR floor, technical-founder requirement, exclusions); re-run scoring to re-rank the pipeline and see the memo's **Mandate fit** block. (Old `/thesis` links redirect here.)
+11. **Founder** (`/founders/1`, Aria Voss) - the persistent Founder Score history across companies and scoring runs.
+12. **Live sourcing** (`/sourcing`, needs network) - hit **Scan** to pull real GitHub/HN founders into the same funnel with a drafted outreach message.
 
 ## Repository layout
 
@@ -169,7 +180,7 @@ backend/
   app/
     api/          # FastAPI routers (applications, pipeline, query, thesis, sourcing, founders)
     ingestion/    # one pipeline: normalize -> dedup -> entity-resolve; synthetic loader; deck parser; inbound link enrichment
-    reasoning/    # thesis fit, screening, 3-axis scoring, cold-start, diligence, validator, memo, trace
+    reasoning/    # thesis fit, screening, 3-axis scoring, cold-start, team complementarity, diligence, validator, memo, recombination, trace
     sourcing/     # live GitHub / HN / arXiv scanners + outreach draft
     demo_seed.py  # one-command deterministic offline rebuild
   data/           # committed synthetic profiles + pitch decks (nothing generated at runtime)
