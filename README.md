@@ -189,3 +189,65 @@ frontend/
   components/     # detail, memo, founder, pipeline, trace ("Why?" panel), shared UI
   lib/            # typed API client, shared types, formatters
 ```
+
+## Deployment
+
+The demo runs on a single small VPS (Ubuntu 24.04) behind Caddy, using a **same-origin** layout so the browser never makes a cross-origin call and CORS is a non-issue.
+
+### Architecture
+
+```
+Internet ──▶ Caddy :80  (http://<host>)
+             ├─ /api/*  ──strip /api──▶ 127.0.0.1:8000   FastAPI  (uvicorn)
+             └─ /*                  ──▶ 127.0.0.1:3000   Next.js  (next start)
+```
+
+The frontend is built with `NEXT_PUBLIC_API_URL=/api`, so every client-side call is a relative `/api/...` request to the same origin; Caddy strips the `/api` prefix and forwards to the backend. All data fetching is client-side, so nothing calls the API during `next build` and the backend need not be up to build.
+
+### Server layout
+
+- `/opt/vc-brain` - the repo checkout (backend + frontend).
+- `backend/.env` - `OPENAI_API_KEY` (+ optional `GITHUB_TOKEN`); not committed, `chmod 600`.
+- `backend/vc_brain.db` - the pre-seeded SQLite demo DB (copied in, not reseeded).
+- Backend deps via `uv sync` into `backend/.venv`.
+
+### systemd units
+
+| Unit | Runs | Bind |
+| --- | --- | --- |
+| `vcbrain-api.service` | `.venv/bin/uvicorn app.main:app` | `127.0.0.1:8000` |
+| `vcbrain-web.service` | `node_modules/.bin/next start` | `127.0.0.1:3000` |
+
+Both are `Restart=always` and `enabled` (survive reboot). Caddy runs from its own packaged `caddy.service` reading `/etc/caddy/Caddyfile`.
+
+### Caddyfile
+
+```
+http://<host> {
+	encode gzip
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+```
+
+### One-time server prep
+
+2 GB swapfile (in `/etc/fstab`; `next build` OOMs on 1 GB without it), Node 22 LTS (NodeSource), `uv` (astral.sh installer), Caddy (official apt repo), and `ufw` allowing 22/80/443.
+
+### Updating a running deployment
+
+```bash
+cd /opt/vc-brain && git pull
+# backend
+cd backend && ~/.local/bin/uv sync && systemctl restart vcbrain-api
+# frontend (rebuild only if frontend/ changed)
+cd ../frontend && npm ci && NEXT_PUBLIC_API_URL=/api npm run build && systemctl restart vcbrain-web
+# edge (only if the Caddyfile changed)
+systemctl reload caddy
+```
+
