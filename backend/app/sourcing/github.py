@@ -221,6 +221,131 @@ def _to_signal(repo: dict, content: dict) -> RawSignal:
     )
 
 
+def normalize_github_handle(handle_or_url: str | None) -> str | None:
+    """Extract a bare GitHub login from a handle or a profile URL.
+
+    ``octocat`` / ``@octocat`` / ``https://github.com/octocat`` / ``github.com/octocat/``
+    all normalise to ``octocat``. Returns ``None`` for anything that is not a single
+    login segment (so a repo URL or garbage never becomes a founder handle).
+    """
+    if not handle_or_url:
+        return None
+    h = handle_or_url.strip()
+    if "github.com" in h:
+        h = h.split("github.com", 1)[1].lstrip("/:")
+        h = h.split("/", 1)[0]
+    h = h.lstrip("@").strip().strip("/")
+    if not h or "/" in h or " " in h or h.startswith("."):
+        return None
+    return h
+
+
+def enrich_github_handle(
+    handle_or_url: str,
+    *,
+    founder_name: str | None = None,
+    max_repos: int = 6,
+    enrich: bool = True,
+) -> list[RawSignal]:
+    """Enrich a self-declared GitHub handle into founder-scoped signals.
+
+    Reuses the same profile / commit-cadence / README-quality enrichment the
+    outbound scanner uses, but the signals attach to the *founder* (not a per-repo
+    company): one ``profile`` signal plus up to ``max_repos`` of the founder's own
+    repos ranked by star velocity. Repo signals share the scanner's stable
+    ``github:repo:{full_name}`` dedup key, so a re-run - or overlap with an outbound
+    scan - dedups cleanly. Raises ``SourcingError`` on a missing user or a failed
+    fetch (the caller records that as a fetch outcome; nothing is fabricated).
+    """
+    login = normalize_github_handle(handle_or_url)
+    if login is None:
+        raise SourcingError(f"Could not parse a GitHub handle from {handle_or_url!r}.")
+    headers = _headers()
+
+    resp = fetch(f"{_API}/users/{login}", headers=headers)
+    _check_rate_limit(resp)
+    if resp.status_code == 404:
+        raise SourcingError(f"GitHub user '{login}' not found.")
+    if resp.status_code != 200:
+        raise SourcingError(f"GitHub profile fetch failed for '{login}' (HTTP {resp.status_code}).")
+    profile = resp.json()
+
+    repos = _user_repos(login, headers, max_repos)
+    hint = FounderHint(
+        name=founder_name or profile.get("name") or login,
+        github_handle=login,
+        links={"github": f"https://github.com/{login}", **({"blog": profile["blog"]} if profile.get("blog") else {})},
+        bio=profile.get("bio"),
+    )
+
+    signals: list[RawSignal] = [_profile_signal(login, profile, hint, len(repos))]
+    for repo in repos:
+        content = _repo_content(repo)
+        content["self_declared"] = True
+        content["fetch_outcome"] = "fetched"
+        if enrich:
+            _enrich(repo, content, headers)
+        signals.append(
+            RawSignal(
+                source="github",
+                content=content,
+                timestamp=_parse_ts(repo["created_at"]),
+                dedup_key=f"github:repo:{repo['full_name']}",
+                founder=hint,
+                company=None,  # founder-scoped: keep the application's company link intact
+            )
+        )
+    return signals
+
+
+def _user_repos(login: str, headers: dict, max_repos: int) -> list[dict]:
+    """The founder's own (non-fork) repos, ranked by star velocity then stars."""
+    resp = fetch(
+        f"{_API}/users/{login}/repos",
+        params={"sort": "pushed", "per_page": 100, "type": "owner"},
+        headers=headers,
+    )
+    _check_rate_limit(resp)
+    if resp.status_code != 200:
+        return []
+    repos = resp.json()
+    if not isinstance(repos, list):
+        return []
+    own = [r for r in repos if not r.get("fork") and r.get("created_at")]
+    own.sort(key=lambda r: (_velocity(r), r.get("stargazers_count", 0)), reverse=True)
+    return own[:max_repos]
+
+
+def _profile_signal(login: str, profile: dict, hint: FounderHint, n_repos: int) -> RawSignal:
+    created = profile.get("created_at")
+    content = {
+        "kind": "profile",
+        "handle": login,
+        "url": f"https://github.com/{login}",
+        "name": profile.get("name"),
+        "bio": profile.get("bio"),
+        "company": profile.get("company"),
+        "location": profile.get("location"),
+        "followers": profile.get("followers"),
+        "following": profile.get("following"),
+        "public_repos": profile.get("public_repos"),
+        "account_created": created,
+        "blog": profile.get("blog") or None,
+        "top_repos_sampled": n_repos,
+        "self_declared": True,
+        "fetch_outcome": "fetched",
+    }
+    ts = _parse_ts(created) if created else datetime.now(UTC)
+    return RawSignal(
+        source="github",
+        content=content,
+        timestamp=ts,
+        dedup_key=f"github:profile:{login}",
+        founder=hint,
+        company=None,
+    )
+
+
 def _homepage_domain(homepage: str | None) -> str | None:
     if not homepage:
         return None
