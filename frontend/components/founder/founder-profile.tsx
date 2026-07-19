@@ -26,7 +26,7 @@ export function FounderProfile({ id }: { id: string }) {
           <PageHeader
             title={
               <span className="flex items-center gap-2">
-                <Link href="/" className="text-muted-foreground hover:text-foreground">
+                <Link href="/pipeline" className="text-muted-foreground hover:text-foreground">
                   Pipeline
                 </Link>
                 <span className="text-muted-foreground">/</span>

@@ -54,7 +54,7 @@ function FitCell({ app }: { app: Application }) {
     );
   return (
     <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-      <Check className="size-3" /> In thesis
+      <Check className="size-3" /> In mandate
     </span>
   );
 }

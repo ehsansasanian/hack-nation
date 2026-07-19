@@ -16,7 +16,7 @@ import { TagInput } from "@/components/ui/tag-input";
 
 const DEFAULT_THESIS: Thesis = {
   id: 0,
-  name: "New thesis",
+  name: "New mandate",
   sectors: [],
   stages: [],
   geographies: [],
@@ -84,9 +84,9 @@ function ThesisForm({ initial }: { initial: Thesis }) {
         active: true,
       });
       setSaved(true);
-      setTimeout(() => router.push("/"), 1400);
+      setTimeout(() => router.push("/pipeline"), 1400);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not save the thesis.");
+      setError(err instanceof ApiError ? err.message : "Could not save the mandate.");
     } finally {
       setSaving(false);
     }
@@ -97,12 +97,12 @@ function ThesisForm({ initial }: { initial: Thesis }) {
       {saved && (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           <CircleCheck className="size-4" />
-          Thesis saved. Re-run scoring (CLI or per-application) to re-rank the pipeline
+          Mandate saved. Re-run scoring (CLI or per-application) to re-rank the pipeline
           against it. Redirecting…
         </div>
       )}
       <Card className="space-y-5 p-5">
-        <Field label="Thesis name">
+        <Field label="Mandate name">
           <Input value={t.name} onChange={(e) => set("name", e.target.value)} />
         </Field>
         <Field
@@ -174,10 +174,10 @@ function ThesisForm({ initial }: { initial: Thesis }) {
       <div className="flex items-center gap-3">
         <Button type="submit" size="lg" disabled={saving || saved}>
           {saving && <Loader2 className="size-4 animate-spin" />}
-          Save thesis
+          Save mandate
         </Button>
         <span className="text-xs text-muted-foreground">
-          Saving stores the active thesis; scoring re-runs pick it up.
+          Saving stores the active mandate; scoring re-runs pick it up.
         </span>
       </div>
     </form>
@@ -189,7 +189,7 @@ export default function ThesisPage() {
   return (
     <div>
       <PageHeader
-        title="Investment thesis"
+        title="Investment mandate"
         subtitle="The hard filter and scoring lens for every application - inbound and outbound."
       />
       <Async state={state}>{(thesis) => <ThesisForm initial={thesis} />}</Async>

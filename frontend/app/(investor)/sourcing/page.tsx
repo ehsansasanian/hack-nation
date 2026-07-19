@@ -35,6 +35,11 @@ const STATUS_STYLE: Record<string, string> = {
   out_of_thesis: "border-amber-200 bg-amber-50 text-amber-700",
 };
 
+// Backend keeps the `out_of_thesis` status value; surface it as "out of mandate".
+const STATUS_LABEL: Record<string, string> = {
+  out_of_thesis: "out of mandate",
+};
+
 function CandidateCard({ c }: { c: ScanCandidate }) {
   return (
     <Card className="space-y-2 p-4">
@@ -50,7 +55,7 @@ function CandidateCard({ c }: { c: ScanCandidate }) {
             STATUS_STYLE[c.status] ?? "border-border bg-muted text-muted-foreground",
           )}
         >
-          {c.status.replace(/_/g, " ")}
+          {STATUS_LABEL[c.status] ?? c.status.replace(/_/g, " ")}
         </span>
       </div>
       <p className="text-sm text-muted-foreground">{c.why_flagged}</p>
