@@ -111,6 +111,8 @@ export interface ApplicationDetail extends Application {
   // Self-declared per-founder links captured on apply (all founders, whether or
   // not entity resolution linked them to the company). null for legacy apps.
   declared_links: DeclaredFounderLinks[] | null;
+  // Server-computed qualitative "why is this alpha" read. null for legacy apps.
+  edge: Edge | null;
 }
 
 export interface FounderDetail extends Founder {
@@ -266,6 +268,22 @@ export interface FounderMatches {
   founder: MatchFounder;
   needs: string[]; // coverage the founder is missing: technical / commercial
   candidates: RecombinationCandidate[];
+}
+
+// --- Edge panel (Phase 8) - qualitative "why is this alpha" ----------------
+
+export interface EdgeLine {
+  key: string; // cold_start | outbound | momentum | recency
+  label: string;
+  detail: string;
+  evidence: string; // the flag / field / signal this line is derived from
+}
+
+/** Server-computed, strictly-qualitative edge read (no return numbers). */
+export interface Edge {
+  summary: string; // honest lead; "" when no edge is derivable
+  has_edge: boolean;
+  lines: EdgeLine[];
 }
 
 // --- Trace (Phase 6 agentic traceability) ---------------------------------

@@ -85,11 +85,30 @@ class ApplicationOut(_ORM):
     scores: list[ScoreOut] = []
 
 
+class EdgeLineOut(BaseModel):
+    """One qualitative "why is this alpha" line, with its own cited evidence."""
+
+    key: str  # cold_start | outbound | momentum | recency
+    label: str
+    detail: str
+    evidence: str  # the flag / field / signal this line is derived from
+
+
+class EdgeOut(BaseModel):
+    """The Edge panel: strictly qualitative, evidence-cited, no return numbers."""
+
+    summary: str = ""  # honest lead; "" when no edge is derivable
+    has_edge: bool = False
+    lines: list[EdgeLineOut] = []
+
+
 class ApplicationDetailOut(ApplicationOut):
     deck_text: str | None = None
     claims: list[ClaimOut] = []
     founders: list[FounderOut] = []
     declared_links: list | None = None  # self-declared per-founder links from apply
+    # Phase 8: server-computed qualitative "why is this alpha" read (deterministic).
+    edge: EdgeOut | None = None
 
 
 class FounderDetailOut(FounderOut):

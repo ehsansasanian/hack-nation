@@ -1,7 +1,7 @@
 // Shared display helpers: axis / trust / trend vocab, colour maps, and formatters.
 // One place so every chip, badge and label reads the same across the app.
 
-import type { Axis, Score, TrustLevel } from "./types";
+import type { Axis, Score, Trend, TrustLevel } from "./types";
 
 export const AXIS_META: Record<Axis, { label: string; short: string; tint: string }> = {
   founder: {
@@ -116,6 +116,18 @@ export function relativeDate(iso: string): string {
 /** Count claims flagged as contradicted (for the pipeline trust summary). */
 export function contradictionCount(claims: { trust_level: TrustLevel | null }[]): number {
   return claims.filter((c) => c.trust_level === "contradicted").length;
+}
+
+/** Whether an application has a substantive "edge" (alpha) signal, mirroring the
+ *  server-side Edge rule (cold-start | outbound | improving trend). Used only for a
+ *  low-clutter inline hint in the dense pipeline table; the authoritative,
+ *  evidence-cited Edge panel is server-computed on the application detail page. */
+export function hasEdgeHint(app: {
+  origin: string;
+  scores: { cold_start: boolean; trend: Trend | null }[];
+}): boolean {
+  if (app.origin === "outbound") return true;
+  return app.scores.some((s) => s.cold_start || s.trend === "improving");
 }
 
 export const SOURCE_TINT: Record<string, string> = {

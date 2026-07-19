@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ShieldAlert } from "lucide-react";
+import { Check, ShieldAlert, Sparkles } from "lucide-react";
 
 import type { Application } from "@/lib/types";
-import { AXIS_META, AXIS_ORDER, orderedScores } from "@/lib/format";
+import { AXIS_META, AXIS_ORDER, hasEdgeHint, orderedScores } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { AxisChip } from "@/components/axis-chip";
 import { OriginBadge } from "@/components/origin-badge";
@@ -91,13 +91,23 @@ export function PipelineTable({ rows }: { rows: PipelineRow[] }) {
                 )}
               >
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/applications/${app.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-medium hover:text-blue-700 hover:underline"
-                  >
-                    {app.company.name}
-                  </Link>
+                  <span className="flex items-center gap-1.5">
+                    <Link
+                      href={`/applications/${app.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-medium hover:text-blue-700 hover:underline"
+                    >
+                      {app.company.name}
+                    </Link>
+                    {hasEdgeHint(app) && (
+                      <span
+                        title="Edge (alpha) signal - open for the evidence-cited panel"
+                        className="inline-flex"
+                      >
+                        <Sparkles className="size-3 text-emerald-500" />
+                      </span>
+                    )}
+                  </span>
                   <div className="mt-0.5 max-w-[240px] truncate text-xs text-muted-foreground">
                     {app.company.one_liner ??
                       [app.company.sector, app.company.stage, app.company.geography]

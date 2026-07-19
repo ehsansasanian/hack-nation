@@ -6,15 +6,16 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
-from app.models import Application, Memo, RecombinationNote
+from app.models import Application, Memo, RecombinationNote, Signal
 from app.sourcing.github import normalize_github_handle
 from app.reasoning.analysis import acquire, run_analysis_task
 from app.reasoning.diligence import DiligenceOutcome, run_diligence
+from app.reasoning.edge import LatestSignal, edge_from_orm
 from app.reasoning.memo import generate_memo
 from app.reasoning.recombination import RecombinationResult, generate_recombination
 from app.reasoning.service import ScoringOutcome, score_application
@@ -27,6 +28,8 @@ from app.schemas import (
     ClaimOut,
     CompanyOut,
     DiligenceResultOut,
+    EdgeLineOut,
+    EdgeOut,
     FounderOut,
     MemoOut,
     RecombinationOut,
@@ -219,6 +222,24 @@ def analyze_application_endpoint(
     )
 
 
+def _latest_signal(session: Session, application: Application) -> LatestSignal | None:
+    """The freshest evidence signal for the application's company + its founders.
+
+    Feeds the Edge panel's signal-recency line. Read-only; None when there are no
+    datable signals to cite.
+    """
+    founder_ids = [f.id for f in application.company.founders]
+    conds = [Signal.company_id == application.company.id]
+    if founder_ids:
+        conds.append(Signal.founder_id.in_(founder_ids))
+    sig = session.scalar(
+        select(Signal).where(or_(*conds)).order_by(Signal.timestamp.desc()).limit(1)
+    )
+    if sig is None:
+        return None
+    return LatestSignal(id=sig.id, source=sig.source, timestamp=sig.timestamp)
+
+
 @router.get("/applications/{application_id}", response_model=ApplicationDetailOut)
 def get_application(
     application_id: int, session: Session = Depends(get_session)
@@ -236,6 +257,13 @@ def get_application(
         raise HTTPException(status_code=404, detail="Application not found.")
     detail = ApplicationDetailOut.model_validate(application)
     detail.founders = [FounderOut.model_validate(f) for f in application.company.founders]
+    # Server-computed, deterministic "why is this alpha" read (qualitative only).
+    edge = edge_from_orm(application, _latest_signal(session, application))
+    detail.edge = EdgeOut(
+        summary=edge.summary,
+        has_edge=edge.has_edge,
+        lines=[EdgeLineOut(**asdict(line)) for line in edge.lines],
+    )
     return detail
 
 

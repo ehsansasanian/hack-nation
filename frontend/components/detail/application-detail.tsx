@@ -37,6 +37,7 @@ import { AxisCard } from "./axis-card";
 import { ClaimsTable } from "./claims-table";
 import { OutreachDraft } from "./outreach-draft";
 import { EnrichmentOutcomes } from "./enrichment-outcomes";
+import { EdgePanel } from "./edge-panel";
 import { RecombinationCard } from "./recombination-card";
 import { AnalysisProgress, ReRunAnalysis, isInFlight } from "./analysis-progress";
 
@@ -611,6 +612,12 @@ export function ApplicationDetail({ id }: { id: string }) {
               ))}
             </div>
           </section>
+        )}
+
+        {/* edge - qualitative "why is this alpha", server-computed & evidence-cited.
+            Rendered once analysis has produced scores (or whenever an edge exists). */}
+        {app.edge && (app.edge.has_edge || scores.length > 0) && (
+          <EdgePanel edge={app.edge} />
         )}
 
         {/* recombination - low-scoring only: complementary co-founders + pivots +
