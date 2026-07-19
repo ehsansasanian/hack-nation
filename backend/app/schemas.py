@@ -76,6 +76,10 @@ class ApplicationOut(_ORM):
     screening_verdict: str | None = None
     screening_rationale: str | None = None
     outreach_draft: str | None = None  # set only on activated outbound candidates
+    # Inbound enrichment: per-source fetch report set by the ``enriching`` stage,
+    # e.g. {"github": {"outcome": "fetched", "signal_count": 12},
+    #       "linkedin": {"outcome": "blocked", "signal_count": 1, "note": "..."}}.
+    enrichment_report: dict | None = None
     created_at: datetime
     company: CompanyOut
     scores: list[ScoreOut] = []
@@ -85,6 +89,7 @@ class ApplicationDetailOut(ApplicationOut):
     deck_text: str | None = None
     claims: list[ClaimOut] = []
     founders: list[FounderOut] = []
+    declared_links: list | None = None  # self-declared per-founder links from apply
 
 
 class FounderDetailOut(FounderOut):
@@ -101,8 +106,30 @@ class AnalyzeOut(BaseModel):
     detail: str
 
 
+class FounderLinksIn(BaseModel):
+    """Optional self-declared links for one founder, collected on apply.
+
+    Everything is optional - over-collecting works against us and a missing link
+    must never penalise a founder (cold-start protection stays). Handles may be
+    given bare (``octocat``) or as full URLs; the enrichment stage normalises them.
+    """
+
+    name: str | None = None
+    github: str | None = None  # handle or profile URL
+    linkedin: str | None = None  # profile URL (typically auth-walled)
+    website: str | None = None  # personal site / blog URL
+    x: str | None = None  # handle or profile URL (X / Twitter, typically auth-walled)
+    other_links: list[str] = []
+
+
 class ApplicationCreate(BaseModel):
-    """Inbound application: a company name plus optional deck text and metadata."""
+    """Inbound application: a company name plus optional deck text and metadata.
+
+    ``founders`` carries optional per-founder self-declared links (github / linkedin
+    / website / x) that the ``enriching`` stage fetches before screening. The legacy
+    flat ``founder_name`` stays for backward compatibility; when ``founders`` is set
+    it takes precedence and the first entry is treated as the primary founder.
+    """
 
     company_name: str
     deck_text: str | None = None
@@ -111,6 +138,7 @@ class ApplicationCreate(BaseModel):
     stage: str | None = None
     geography: str | None = None
     one_liner: str | None = None
+    founders: list[FounderLinksIn] = []
 
 
 class ThesisOut(_ORM):

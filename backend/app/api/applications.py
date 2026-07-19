@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
 from app.models import Application, Memo
+from app.sourcing.github import normalize_github_handle
 from app.reasoning.analysis import acquire, is_inflight, run_analysis_task
 from app.reasoning.diligence import DiligenceOutcome, run_diligence
 from app.reasoning.memo import generate_memo
@@ -35,6 +36,50 @@ from app.schemas import (
 )
 
 router = APIRouter(tags=["applications"])
+
+
+def _normalize_declared_links(payload: ApplicationCreate) -> list[dict]:
+    """Normalise per-founder self-declared links; fall back to the flat founder_name.
+
+    The ``enriching`` stage consumes this list. Backward compatible: a legacy payload
+    with only ``founder_name`` yields a single link-less record (nothing to fetch).
+    """
+    records: list[dict] = []
+    for f in payload.founders:
+        rec = {
+            "name": f.name,
+            "github": (f.github or "").strip() or None,
+            "linkedin": (f.linkedin or "").strip() or None,
+            "website": (f.website or "").strip() or None,
+            "x": (f.x or "").strip() or None,
+            "other_links": [link for link in (f.other_links or []) if link],
+        }
+        if any(rec[k] for k in ("name", "github", "linkedin", "website", "x")) or rec["other_links"]:
+            records.append(rec)
+    if not records and payload.founder_name:
+        records.append(
+            {"name": payload.founder_name, "github": None, "linkedin": None,
+             "website": None, "x": None, "other_links": []}
+        )
+    return records
+
+
+def _primary_founder_hint(records: list[dict]) -> FounderHint | None:
+    """Founder hint for the deck signal, carrying the primary founder's declared links."""
+    if not records:
+        return None
+    primary = records[0]
+    links = {
+        key: primary[key]
+        for key in ("github", "linkedin", "website", "x")
+        if primary.get(key)
+    }
+    hint = FounderHint(
+        name=primary.get("name"),
+        github_handle=normalize_github_handle(primary.get("github")),
+        links=links,
+    )
+    return hint if (hint.name or hint.github_handle) else None
 
 
 def _to_scoring_result(outcome: ScoringOutcome) -> ScoringResultOut:
@@ -70,11 +115,12 @@ def create_application(
     immediately with ``analysis_status='received'`` and the caller polls
     ``GET /applications/{id}`` to watch it progress.
     """
+    declared_links = _normalize_declared_links(payload)
     raw = RawSignal(
         source="deck",
         content={"kind": "inbound_application", "deck_text": payload.deck_text or ""},
         timestamp=datetime.now(UTC),
-        founder=FounderHint(name=payload.founder_name) if payload.founder_name else None,
+        founder=_primary_founder_hint(declared_links),
         company=CompanyHint(
             name=payload.company_name,
             sector=payload.sector,
@@ -99,10 +145,14 @@ def create_application(
             deck_text=payload.deck_text,
             origin="inbound",
             status="in_review",
+            declared_links=declared_links,
         )
         session.add(application)
-    elif payload.deck_text:
-        application.deck_text = payload.deck_text
+    else:
+        if payload.deck_text:
+            application.deck_text = payload.deck_text
+        if declared_links:  # a re-apply may add/replace the self-declared links
+            application.declared_links = declared_links
 
     session.commit()
     session.refresh(application)
