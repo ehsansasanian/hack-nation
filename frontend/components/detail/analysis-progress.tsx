@@ -96,20 +96,28 @@ export function AnalysisProgress({
   enrichmentReport?: EnrichmentReport | null;
 }) {
   const failed = status === "failed";
+  // "scored" is a resting state (scoring ran at sourcing/batch time): screening +
+  // scoring are done, diligence + memo are pending until the analyst resumes.
+  const scored = status === "scored";
   const activeIndex = ACTIVE_INDEX[status] ?? -1;
+  const canRun = status === "received" || failed || scored;
 
   const heading = failed
     ? "Analysis failed"
-    : status === "received"
-      ? "Queued for analysis"
-      : "Analyzing application";
+    : scored
+      ? "Scored - diligence pending"
+      : status === "received"
+        ? "Queued for analysis"
+        : "Analyzing application";
   const subtitle = failed
     ? "The pipeline stopped before completing. You can retry it."
-    : status === "received"
-      ? "Enrichment, screening, scoring, diligence and memo will run automatically."
-      : status === "enriching"
-        ? "Fetching self-declared founder links as evidence - runs before screening."
-        : "Live - scores, claims and the memo appear below as each stage lands.";
+    : scored
+      ? "Screening and 3-axis scoring ran at sourcing time. Run analysis to complete diligence and the memo."
+      : status === "received"
+        ? "Enrichment, screening, scoring, diligence and memo will run automatically."
+        : status === "enriching"
+          ? "Fetching self-declared founder links as evidence - runs before screening."
+          : "Live - scores, claims and the memo appear below as each stage lands.";
 
   return (
     <section
@@ -122,6 +130,8 @@ export function AnalysisProgress({
         <div className="flex items-center gap-2">
           {failed ? (
             <TriangleAlert className="size-4 text-red-600" />
+          ) : scored ? (
+            <Check className="size-4 text-emerald-600" />
           ) : status !== "received" ? (
             <Loader2 className="size-4 animate-spin text-blue-600" />
           ) : null}
@@ -130,7 +140,7 @@ export function AnalysisProgress({
             <div className="text-xs text-muted-foreground">{subtitle}</div>
           </div>
         </div>
-        {(status === "received" || failed) && (
+        {canRun && (
           <Button size="sm" onClick={() => onAnalyze(false)} disabled={busy}>
             {busy ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -148,11 +158,15 @@ export function AnalysisProgress({
         {STAGES.map((stage, i) => {
           const state: "done" | "active" | "pending" = failed
             ? "pending"
-            : i < activeIndex
-              ? "done"
-              : i === activeIndex
-                ? "active"
-                : "pending";
+            : scored
+              ? i <= ACTIVE_INDEX.scoring // enriching, screening, scoring are done
+                ? "done"
+                : "pending"
+              : i < activeIndex
+                ? "done"
+                : i === activeIndex
+                  ? "active"
+                  : "pending";
           return (
             <Step
               key={stage.key}

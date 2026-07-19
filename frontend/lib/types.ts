@@ -11,6 +11,7 @@ export type AnalysisStatus =
   | "enriching"
   | "screening"
   | "scoring"
+  | "scored" // scored at scan/batch time; at rest, diligence + memo pending
   | "diligence"
   | "memo"
   | "ready"

@@ -70,15 +70,19 @@ def is_inflight(application_id: int) -> bool:
 def derive_analysis_status(app: Application) -> str:
     """The analysis stage implied by how far the persisted pipeline got.
 
-    Used to (re)stamp status after the batch CLIs (score_all / diligence_all) and
-    demo_seed, which drive the same stages without going through the live chain.
+    Used to (re)stamp status after the batch CLIs (score_all / diligence_all),
+    demo_seed and outbound sourcing, which drive the stages without going through
+    the live chain. A scored-but-not-yet-diligenced app is at *rest* (scoring is a
+    single atomic call), so it resolves to the terminal-until-resumed ``scored``
+    state - distinct from the transient in-flight ``scoring`` beat - so the UI
+    offers "run analysis for full diligence" instead of a perpetual spinner.
     """
     if app.memo is not None:
         return "ready"
     if app.status == "screened_out":
         return "screened_out"
     if app.scores:
-        return "scoring"
+        return "scored"
     return "received"
 
 

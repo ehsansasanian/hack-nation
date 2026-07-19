@@ -41,7 +41,9 @@ import { EdgePanel } from "./edge-panel";
 import { RecombinationCard } from "./recombination-card";
 import { AnalysisProgress, ReRunAnalysis, isInFlight } from "./analysis-progress";
 
-const TERMINAL: AnalysisStatus[] = ["ready", "screened_out", "failed"];
+// "scored" is a resting state: scoring ran at sourcing/batch time and the app now
+// waits for the analyst to resume diligence, so polling stops here (not in-flight).
+const TERMINAL: AnalysisStatus[] = ["ready", "screened_out", "failed", "scored"];
 const POLL_MS = 2000;
 const MAX_POLLS = 90; // ~3 min safety cap so a stalled run never polls forever
 
@@ -515,7 +517,8 @@ export function ApplicationDetail({ id }: { id: string }) {
   const coldStart = scores.some((s) => s.cold_start);
   const screened = app.status === "screened_out";
   const analysis = app.analysis_status;
-  const showProgress = isInFlight(analysis) || analysis === "failed";
+  const showProgress =
+    isInFlight(analysis) || analysis === "failed" || analysis === "scored";
   const c = app.company;
 
   // Recombination is a low-scoring-only affordance (screened out, cold-start, or a

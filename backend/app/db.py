@@ -71,14 +71,14 @@ def _apply_additive_migrations() -> None:
 # touches rows where the column is still NULL, so it is safe to run on every
 # startup and after a demo re-seed. Precedence mirrors how far the pipeline got:
 # a memo means the whole chain finished (ready); an explicitly screened-out app is
-# terminal; scores-without-a-memo is a partial run left at the scoring stage; a
-# bare application has not been analysed yet (received).
+# terminal; scores-without-a-memo is a run at rest after scoring (scored, diligence
+# pending); a bare application has not been analysed yet (received).
 _BACKFILL_ANALYSIS_STATUS = """
 UPDATE applications
 SET analysis_status = CASE
     WHEN id IN (SELECT application_id FROM memos)  THEN 'ready'
     WHEN status = 'screened_out'                   THEN 'screened_out'
-    WHEN id IN (SELECT application_id FROM scores) THEN 'scoring'
+    WHEN id IN (SELECT application_id FROM scores) THEN 'scored'
     ELSE 'received'
 END
 WHERE analysis_status IS NULL
