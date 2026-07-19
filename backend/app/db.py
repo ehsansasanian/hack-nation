@@ -31,6 +31,9 @@ _ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
         "outreach_draft": "TEXT",
         "analysis_status": "TEXT",
         "analysis_error": "TEXT",
+        # Inbound enrichment (Phase 8): self-declared links + per-source fetch report.
+        "declared_links": "JSON",
+        "enrichment_report": "JSON",
     },
     # Phase 4 traceability columns (signal -> claim -> trust -> memo chain).
     "claims": {"source": "TEXT", "validator_note": "TEXT"},

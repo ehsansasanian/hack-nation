@@ -105,11 +105,17 @@ class Application(Base):
     deck_text: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String, default="in_review")  # screened_out/in_review/memo_ready
     # Auto-analysis pipeline stage, driven by ``reasoning.analysis.analyze_application``.
-    # received -> screening -> scoring -> diligence -> memo -> ready, or the terminal
-    # branches screened_out (chain honestly stopped at screening) / failed (analysis_error set).
+    # received -> enriching -> screening -> scoring -> diligence -> memo -> ready, or the
+    # terminal branches screened_out (chain honestly stopped at screening) / failed
+    # (analysis_error set). ``enriching`` fetches self-declared founder links before screening.
     analysis_status: Mapped[str] = mapped_column(String, default="received")
     analysis_error: Mapped[str | None] = mapped_column(Text)
     origin: Mapped[str] = mapped_column(String, default="inbound")  # inbound/outbound
+    # Inbound enrichment: self-declared per-founder links collected on apply
+    # ([{name, github, linkedin, website, x, other_links}]) and the per-source fetch
+    # report the ``enriching`` stage records (source -> {outcome, signal_count}).
+    declared_links: Mapped[list] = mapped_column(JSON, default=list)
+    enrichment_report: Mapped[dict] = mapped_column(JSON, default=dict)
     # Screening (Phase 2 fast first-pass) verdict, stored for transparency - never silent.
     screening_verdict: Mapped[str | None] = mapped_column(String)  # viable/non_viable/thesis_mismatch
     screening_rationale: Mapped[str | None] = mapped_column(Text)
