@@ -9,6 +9,7 @@ import type {
   FounderLinkInput,
   Memo,
   QueryResponse,
+  Recombination,
   ScanRequest,
   ScanSummary,
   Thesis,
@@ -95,6 +96,18 @@ export const api = {
   analyze: (id: number | string, force = false) =>
     request<AnalyzeResult>(
       `/applications/${id}/analyze${force ? "?force=true" : ""}`,
+      { method: "POST" },
+    ),
+
+  // Co-founder & idea recombination (hypothetical; never changes real scores).
+  // `recombination` fetches a stored note (404 if none); `recombine` generates it.
+  // The chips use the deterministic offline backend; omit `backend` for the
+  // default (live narrative with offline fallback).
+  recombination: (id: number | string) =>
+    request<Recombination>(`/applications/${id}/recombination`),
+  recombine: (id: number | string, backend?: "openai" | "offline") =>
+    request<Recombination>(
+      `/applications/${id}/recombine${backend ? `?backend=${backend}` : ""}`,
       { method: "POST" },
     ),
 

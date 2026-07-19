@@ -37,6 +37,7 @@ import { AxisCard } from "./axis-card";
 import { ClaimsTable } from "./claims-table";
 import { OutreachDraft } from "./outreach-draft";
 import { EnrichmentOutcomes } from "./enrichment-outcomes";
+import { RecombinationCard } from "./recombination-card";
 import { AnalysisProgress, ReRunAnalysis, isInFlight } from "./analysis-progress";
 
 const TERMINAL: AnalysisStatus[] = ["ready", "screened_out", "failed"];
@@ -516,6 +517,12 @@ export function ApplicationDetail({ id }: { id: string }) {
   const showProgress = isInFlight(analysis) || analysis === "failed";
   const c = app.company;
 
+  // Recombination is a low-scoring-only affordance (screened out, cold-start, or a
+  // weak axis) and only once analysis has settled - never mid-run.
+  const weakAxis = scores.length > 0 && Math.min(...scores.map((s) => s.value)) <= 5.5;
+  const analysisSettled = analysis === "ready" || analysis === "screened_out";
+  const showRecombination = analysisSettled && (screened || coldStart || weakAxis);
+
   return (
     <TraceProvider trace={trace}>
       <PageHeader
@@ -605,6 +612,10 @@ export function ApplicationDetail({ id }: { id: string }) {
             </div>
           </section>
         )}
+
+        {/* recombination - low-scoring only: complementary co-founders + pivots +
+            a clearly-hypothetical contingent IC note (never changes real scores) */}
+        {showRecombination && <RecombinationCard appId={app.id} />}
 
         {/* outbound outreach */}
         {app.origin === "outbound" && app.outreach_draft && (

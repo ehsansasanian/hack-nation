@@ -172,6 +172,44 @@ export interface ThesisUpdate {
   exclusions?: string[];
 }
 
+// --- Co-founder & idea recombination (Phase 8) ----------------------------
+
+/** One complementary founder proposed from Memory. HYPOTHETICAL - proposing a
+ *  recombination never changes the application's real axis scores. */
+export interface RecombinationCandidate {
+  founder_id: number;
+  name: string;
+  sector: string | null;
+  founder_score: number | null;
+  technical: boolean;
+  commercial: boolean;
+  fills: string[]; // gaps closed: "technical" | "commercial" | "domain"
+  availability: string; // why they are recombinable (not tied to an active in-thesis deal)
+  why: string; // complementarity rationale
+  match_score: number;
+}
+
+export interface WeakAxis {
+  axis: string;
+  value: number;
+  note: string;
+}
+
+/** A hypothetical recombination note for a low-scoring application: complementary
+ *  co-founder proposals + idea pivots + a contingent IC note. */
+export interface Recombination {
+  application_id: number;
+  company: string;
+  standing: string; // the current, real standing (unchanged by this note)
+  weak_axes: WeakAxis[];
+  gaps: string[];
+  candidates: RecombinationCandidate[];
+  idea_pivots: string[];
+  contingent_note: string;
+  reeval_weeks: number;
+  backend: string;
+}
+
 // --- Trace (Phase 6 agentic traceability) ---------------------------------
 
 export interface TraceSignal {
