@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Application, Company, Score, Thesis
 from app.reasoning.backend import ReasoningBackend, get_backend
-from app.reasoning.context import ScoringContext, build_context
+from app.reasoning.context import ScoringContext, build_context, ensure_team_resolved
 from app.reasoning.founder_score import update_founder_score
 from app.reasoning.schemas import AxisResult, ColdStartAxisResult
 from app.reasoning.thesis_fit import ThesisFit, thesis_fit
@@ -114,15 +114,16 @@ def score_application(
 
     backend = get_backend(prefer_backend)
     try:
-        return _run_scoring(session, app, fit, backend, force)
+        return _run_scoring(session, app, fit, backend, force, thesis)
     except OpenAIError as exc:
         if not (allow_fallback and backend.name != "offline-deterministic"):
             raise
         session.rollback()
         app = _load_application(session, application_id)
-        fit = thesis_fit(app.company, _active_thesis(session))
+        thesis = _active_thesis(session)
+        fit = thesis_fit(app.company, thesis)
         offline = get_backend("offline")
-        outcome = _run_scoring(session, app, fit, offline, force)
+        outcome = _run_scoring(session, app, fit, offline, force, thesis)
         outcome.fallback_from = f"openai ({type(exc).__name__})"
         return outcome
 
@@ -133,8 +134,12 @@ def _run_scoring(
     fit: ThesisFit,
     backend: ReasoningBackend,
     force: bool,
+    thesis: Thesis | None,
 ) -> ScoringOutcome:
-    ctx = build_context(session, app, fit.rationale)
+    # Attach every declared co-founder to the company so the founder axis evaluates
+    # the whole team and the persistent Founder Score updates for each of them.
+    ensure_team_resolved(session, app)
+    ctx = build_context(session, app, fit.rationale, thesis=thesis)
 
     # 2. Screening.
     verdict = backend.screen(ctx)
@@ -161,18 +166,24 @@ def _run_scoring(
     scores.append(_score_generic(session, app, ctx, backend, "market"))
     scores.append(_score_generic(session, app, ctx, backend, "idea_vs_market"))
 
-    # 4. Persistent Founder Score update (all founders on the company).
-    founder_trend = "stable"
-    for founder in ctx.founders:
-        _, founder_trend = update_founder_score(
+    # 4. Persistent Founder Score update for EVERY founder on the team (not just the
+    #    primary). A founder who is individually cold-start blends in at lower
+    #    confidence so the team read never over-writes a thin individual record.
+    primary_trend = "stable"
+    for i, founder in enumerate(ctx.founders):
+        f_cold = ctx.founder_cold_start.get(founder.id, ctx.cold_start)
+        f_conf = round(founder_conf * (0.6 if f_cold else 1.0), 2)
+        _, trend = update_founder_score(
             founder,
             evidence_score=founder_evidence_score,
-            confidence=founder_conf,
-            cold_start=ctx.cold_start,
+            confidence=f_conf,
+            cold_start=f_cold,
             application_id=app.id,
             company_name=app.company.name,
         )
-    founder_result.trend = founder_trend  # founder-axis trend comes from persistent history
+        if i == 0:
+            primary_trend = trend
+    founder_result.trend = primary_trend  # founder-axis trend comes from persistent history
 
     app.status = "in_review"
     session.commit()

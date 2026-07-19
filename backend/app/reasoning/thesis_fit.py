@@ -50,6 +50,10 @@ def thesis_fit(company: Company, thesis: Thesis | None) -> ThesisFit:
         reasons.append(
             f"geography '{company.geography}' outside thesis geographies {thesis.geographies}"
         )
+    # Exclusion list (no-invest): an excluded sector is a hard mandate filter.
+    excluded = [e for e in (thesis.exclusions or []) if _norm(company.sector) == _norm(e)]
+    if excluded:
+        reasons.append(f"sector '{company.sector}' is on the mandate exclusion list {thesis.exclusions}")
 
     in_scope = not reasons
     rationale = _build_rationale(company, thesis, in_scope, reasons)

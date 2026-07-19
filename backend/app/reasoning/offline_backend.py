@@ -22,6 +22,7 @@ from app.models import Signal
 from app.reasoning.backend import ReasoningBackend
 from app.reasoning.context import ScoringContext
 from app.reasoning.schemas import AxisResult, ColdStartAxisResult, ScreeningResult
+from app.reasoning.team import assess_team, patterns_tag
 
 _HYPE = ("blockchain", "metaverse", "synergy", "web3", "crypto", "nft", "revolutioniz", "frictionless")
 # Unambiguous positives - do not appear inside "no X" / "pre-X" negations.
@@ -85,6 +86,14 @@ def _trend_from_history(history: list) -> str:
     return "stable"
 
 
+def _team_for(ctx: ScoringContext):
+    return assess_team(
+        ctx.founders,
+        {f.id: ctx.signals_for(f.id) for f in ctx.founders},
+        ctx.company.sector,
+    )
+
+
 class OfflineBackend(ReasoningBackend):
     name = "offline-deterministic"
 
@@ -134,17 +143,30 @@ class OfflineBackend(ReasoningBackend):
             score += 1.0
             contributors += [s.id for s in sigs if s.source == "manual"]
 
+        # Team complementarity is INPUT to the founder axis (never a 4th axis). Solo
+        # founders take no penalty (lift stays 0); a multi-founder team is adjusted by
+        # its coverage and prior-collaboration signal, and the verdict is named.
+        team = _team_for(ctx)
+        score += team.lift
+
         value = _clamp(score, hi=9.8)
         confidence = round(min(0.85, 0.55 + 0.05 * len(sigs)), 2)
-        evidence = sorted(set(contributors)) or _ids(sigs)
+        base_evidence = sorted(set(contributors)) or _ids(sigs)
+        evidence = sorted(set(base_evidence) | set(team.evidence)) if team.evidence else base_evidence
+        rationale = (
+            f"Track-record team. github_stars={stars or 'n/a'}, hn_points={points or 'n/a'}, "
+            f"prior_exit={'yes' if prior_exit else 'no'}, traction_signal={'yes' if traction else 'no'}, "
+            f"persistent_score_anchor={f.founder_score if f else 'none'}. "
+            f"Complementarity: {team.verdict} (lift {team.lift:+}). "
+            f"{patterns_tag(f, team, prior_exit)}"
+        ).strip()
+        note = ctx.axis_notes.get("founder")
+        if note:
+            rationale += f" Mandate emphasis honored: {note}."
         return AxisResult(
             score=value,
             trend=_trend_from_history(f.score_history if f else []),
-            rationale=(
-                f"Track-record founder. github_stars={stars or 'n/a'}, hn_points={points or 'n/a'}, "
-                f"prior_exit={'yes' if prior_exit else 'no'}, traction_signal={'yes' if traction else 'no'}, "
-                f"persistent_score_anchor={f.founder_score if f else 'none'}."
-            ),
+            rationale=rationale,
             evidence_signal_ids=evidence,
             confidence=confidence,
         )
@@ -185,10 +207,20 @@ class OfflineBackend(ReasoningBackend):
             mid -= 1.0
             factors.append("analyst red flags")
 
+        # Complementarity still matters for a cold-start team (assessed on potential,
+        # not track record); a solo cold-start founder takes no extra penalty.
+        team = _team_for(ctx)
+        if not team.solo:
+            mid += team.lift
+            factors.append(f"complementarity: {team.verdict} (lift {team.lift:+})")
+        elif len(ctx.founders) == 1:
+            factors.append("solo founder - flagged risk, no automatic penalty")
+
         mid = _clamp(mid, hi=7.5)
         low = _clamp(mid - 1.5)
         high = _clamp(mid + 1.5, hi=9.0)
         confidence = round(0.30 + 0.03 * len(sigs), 2)  # deliberately low - thin evidence
+        evidence = sorted(set(_ids(sigs)) | set(team.evidence)) if team.evidence else _ids(sigs)
         return ColdStartAxisResult(
             score_low=low,
             score_high=high,
@@ -197,7 +229,7 @@ class OfflineBackend(ReasoningBackend):
                 + (", ".join(factors) if factors else "little to assess")
                 + f". Range [{low}, {high}] reflects genuine uncertainty."
             ),
-            evidence_signal_ids=_ids(sigs),
+            evidence_signal_ids=evidence,
             confidence=confidence,
         )
 
