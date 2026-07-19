@@ -49,6 +49,22 @@ def _claims_block(claims: list[ExtractedClaim]) -> str:
     return "\n".join(f"- ({c.category}/{c.source}) {c.text}" for c in claims) or "(none)"
 
 
+def _founders_block(ctx: DiligenceContext) -> str:
+    """Resolved founders + the enrichment sources on file, so TEAM claims (e.g.
+    'team of 5', 'ex-FAANG engineers') can be cross-referenced per founder."""
+    if not ctx.founders:
+        return "(no founders resolved)"
+    by_founder: dict[int, list[str]] = {}
+    for s in ctx.evidence_signals:
+        if s.founder_id is not None:
+            by_founder.setdefault(s.founder_id, []).append(f"{s.source}#{s.id}")
+    lines = []
+    for f in ctx.founders:
+        srcs = ", ".join(by_founder.get(f.id, [])) or "no external evidence fetched"
+        lines.append(f"- {f.name} ({(f.bio or 'no bio').split('.')[0]}) | enrichment: {srcs}")
+    return "\n".join(lines)
+
+
 class OpenAIDiligenceBackend(DiligenceBackend):
     name = JUDGE_MODEL
 
@@ -90,6 +106,8 @@ class OpenAIDiligenceBackend(DiligenceBackend):
     ) -> list[ClaimAssessment]:
         user = (
             f"COMPANY: {ctx.company.name}\n\n"
+            f"FOUNDERS ON FILE (cross-reference TEAM claims against each founder's "
+            f"enrichment signals):\n{_founders_block(ctx)}\n\n"
             f"CLAIMS TO CHECK:\n{_claims_block(claims)}\n\n"
             f"EVIDENCE SIGNALS (cite these signal_ids):\n{render_evidence(ctx.evidence_signals)}\n\n"
             "For each claim assign a trust_level:\n"

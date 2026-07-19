@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Application, Claim, Company, Score, Thesis
+from app.reasoning.context import ensure_team_resolved
 from app.reasoning.diligence_backend import DiligenceBackend, get_diligence_backend
 from app.reasoning.diligence_context import DiligenceContext, build_diligence_context
 from app.reasoning.diligence_schemas import ClaimAssessment
@@ -79,6 +80,9 @@ def run_diligence(
     allow_fallback: bool = True,
 ) -> DiligenceOutcome:
     app = _load_application(session, application_id)
+    # Make sure every declared co-founder is attached (idempotent) so team claims can
+    # cross-reference each founder's enrichment signals even on a diligence-only run.
+    ensure_team_resolved(session, app)
     fit = thesis_fit(app.company, _active_thesis(session))
     ctx = build_diligence_context(session, app, fit.rationale)
 
@@ -196,7 +200,7 @@ def _enforce_contradictions(
 
 
 def _apply_axis_critiques(scores: list[Score], report) -> list[str]:
-    """Stamp validator notes on the axis scores; return the unsupported axes."""
+    """Stamp validator notes + supported flag on the axis scores; return unsupported."""
     by_axis = {s.axis: s for s in scores}
     unsupported: list[str] = []
     for critique in report.axis_critiques:
@@ -204,6 +208,7 @@ def _apply_axis_critiques(scores: list[Score], report) -> list[str]:
         if score is None:
             continue
         score.validator_note = critique.note
+        score.validator_supported = bool(critique.supported)
         if not critique.supported:
             unsupported.append(critique.axis)
     return unsupported

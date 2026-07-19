@@ -24,10 +24,12 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Application, Company, Signal
+from app.models import Application, Company, Signal, Thesis
 from app.reasoning.context import build_context
+from app.reasoning.mandate import axis_note, render_guidance
 
 # Canonical axis order and labels (kept local so this module stays import-light).
 AXES = ("founder", "market", "idea_vs_market")
@@ -160,6 +162,30 @@ def build_trace(session: Session, application_id: int) -> Trace:
             detail={"by_source": dict(by_source)},
         )
     )
+
+    # 1b. Mandate guidelines injected into the screening + axis prompts (Phase 8).
+    #     Reconstructed from the active mandate so the injection is visible in the
+    #     trace (kind reuses "screening" so the existing panel renders it as a gate).
+    thesis = session.scalar(select(Thesis).order_by(Thesis.id.desc()))
+    guidance = render_guidance(thesis)
+    notes = {
+        axis: axis_note(thesis, axis)
+        for axis in AXES
+        if axis_note(thesis, axis)
+    }
+    if guidance or notes:
+        note_lines = "; ".join(f"{a}: {n}" for a, n in notes.items())
+        summary = guidance + (f"\nPer-axis emphasis - {note_lines}" if note_lines else "")
+        steps.append(
+            TraceStep(
+                index=len(steps),
+                kind="screening",
+                title="Mandate & guidelines (injected into prompts)",
+                status="applied",
+                summary=summary.strip(),
+                detail={"guidance": guidance, "axis_notes": notes},
+            )
+        )
 
     # 2. Screening verdict.
     if app.screening_verdict:
