@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The VC Brain",
+  title: {
+    default: "DealAI",
+    template: "DealAI - %s",
+  },
   description:
-    "AI-first venture funnel OS: sourcing, screening, diligence and decision on one desk.",
+    "DealAI - the VC Brain: an AI-first venture funnel for sourcing, screening, diligence and decision on one desk.",
 };
 
 export default function RootLayout({

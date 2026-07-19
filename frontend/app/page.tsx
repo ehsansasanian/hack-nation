@@ -1,85 +1,45 @@
 import Link from "next/link";
-import { ArrowRight, Brain, LineChart, Rocket } from "lucide-react";
+import { ArrowRight, Brain } from "lucide-react";
 
-// Landing page - deliberately slim. Product name, one-line pitch, and two
-// entry points: Investors (the pipeline dashboard and the full desk) and
+// Landing page - deliberately minimal. A full-viewport deep-blue hero, the
+// product wordmark, and two entry points: Investors (the pipeline desk) and
 // Searching Investment (the founder-facing apply flow). No investor nav here.
-
-function EntryCard({
-  href,
-  icon: Icon,
-  eyebrow,
-  title,
-  copy,
-  cta,
-}: {
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  eyebrow: string;
-  title: string;
-  copy: string;
-  cta: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
-    >
-      <span className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white">
-        <Icon className="size-5" />
-      </span>
-      <span className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {eyebrow}
-      </span>
-      <span className="mt-1 text-lg font-semibold tracking-tight">{title}</span>
-      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-        {copy}
-      </p>
-      <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-700">
-        {cta}
-        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </Link>
-  );
-}
+//
+// The hero blue is a deep, confident shade of the app's blue-600 accent.
 
 export default function LandingPage() {
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
-      <div className="flex items-center gap-2.5">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-          <Brain className="size-5" />
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0f2a5e] px-6 py-16 text-white">
+      <div className="flex w-full max-w-2xl flex-col items-center text-center">
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
+          <Brain className="size-6" />
         </span>
-        <span className="text-base font-semibold tracking-tight">The VC Brain</span>
-      </div>
 
-      <h1 className="mt-8 text-3xl font-semibold tracking-tight sm:text-4xl">
-        Sourcing, screening, diligence and decision - on one desk.
-      </h1>
-      <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
-        An AI-first venture funnel that scores every founder across three
-        independent axes, checks each claim against the evidence, and writes the
-        memo - with its trust levels and gaps shown, never hidden.
-      </p>
+        <h1 className="mt-8 text-6xl font-semibold tracking-tight sm:text-7xl md:text-8xl">
+          DealAI
+        </h1>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2">
-        <EntryCard
-          href="/pipeline"
-          icon={LineChart}
-          eyebrow="Investors"
-          title="Open the pipeline"
-          copy="Rank the funnel, run natural-language founder search, set your mandate, source outbound candidates, and read evidence-backed memos."
-          cta="Enter the desk"
-        />
-        <EntryCard
-          href="/apply"
-          icon={Rocket}
-          eyebrow="Searching investment"
-          title="Apply for funding"
-          copy="Submit your company and pitch deck. It enters the same funnel as sourced candidates and is analysed the moment it lands."
-          cta="Start an application"
-        />
+        <p className="mt-5 text-sm font-medium tracking-wide text-white/55 sm:text-base">
+          The VC Brain - Sourcing → Screening → Diligence → Decision
+        </p>
+
+        <div className="mt-11 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
+          <Link
+            href="/pipeline"
+            className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-semibold text-[#0f2a5e] shadow-sm transition-all hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f2a5e] sm:w-auto"
+          >
+            Investors
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <Link
+            href="/apply"
+            className="group inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/40 px-7 py-3 text-sm font-semibold text-white transition-all hover:border-white/70 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f2a5e] sm:w-auto"
+          >
+            Searching Investment
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

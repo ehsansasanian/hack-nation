@@ -1,6 +1,6 @@
-# The VC Brain
+# DealAI
 
-An AI-first VC operating system that runs the top of the venture funnel end to end: **sourcing -> screening -> diligence -> decision**. It ingests heterogeneous founder and company signals (pitch decks, GitHub, launches, social, analyst notes) into a deduplicated, source-tagged, timestamped memory layer with a persistent Founder Score, scores each company on three independent axes (Founder, Market, Idea-vs-Market) through a configurable thesis, runs per-claim trust checks that surface contradictions and flag missing data, and produces an investment memo with a recommendation. Every reasoning step is traceable: click "Why?" on any score or claim and see the exact signals -> rationale -> validator outcome -> memo line that produced it.
+DealAI is our entry for the VC Brain challenge - an AI-first VC operating system that runs the top of the venture funnel end to end: **sourcing -> screening -> diligence -> decision**. It ingests heterogeneous founder and company signals (pitch decks, GitHub, launches, social, analyst notes) into a deduplicated, source-tagged, timestamped memory layer with a persistent Founder Score, scores each company on three independent axes (Founder, Market, Idea-vs-Market) through a configurable thesis, runs per-claim trust checks that surface contradictions and flag missing data, and produces an investment memo with a recommendation. Every reasoning step is traceable: click "Why?" on any score or claim and see the exact signals -> rationale -> validator outcome -> memo line that produced it.
 
 It runs **fully offline** via a deterministic reasoning backend (used for the demo). Add a funded `OPENAI_API_KEY` to upgrade reasoning to live GPT with no code change.
 

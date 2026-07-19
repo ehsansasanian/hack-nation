@@ -13,7 +13,7 @@ export default function SearchingLayout({
           <span className="flex size-7 items-center justify-center rounded-lg bg-blue-600 text-white">
             <Brain className="size-4" />
           </span>
-          <span className="text-sm font-semibold tracking-tight">The VC Brain</span>
+          <span className="text-sm font-semibold tracking-tight">DealAI</span>
         </Link>
         <Link
           href="/"
