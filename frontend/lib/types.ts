@@ -8,6 +8,7 @@ export type Origin = "inbound" | "outbound";
 export type Status = "screened_out" | "in_review" | "memo_ready";
 export type AnalysisStatus =
   | "received"
+  | "enriching"
   | "screening"
   | "scoring"
   | "diligence"
@@ -88,6 +89,9 @@ export interface Application {
   screening_verdict: string | null;
   screening_rationale: string | null;
   outreach_draft: string | null;
+  // Inbound enrichment: per-source fetch report set by the `enriching` stage.
+  // null until enrichment runs. See EnrichmentReport below.
+  enrichment_report: EnrichmentReport | null;
   created_at: string;
   company: Company;
   scores: Score[];
@@ -104,6 +108,9 @@ export interface ApplicationDetail extends Application {
   deck_text: string | null;
   claims: Claim[];
   founders: Founder[];
+  // Self-declared per-founder links captured on apply (all founders, whether or
+  // not entity resolution linked them to the company). null for legacy apps.
+  declared_links: DeclaredFounderLinks[] | null;
 }
 
 export interface FounderDetail extends Founder {
@@ -261,4 +268,45 @@ export interface ScanSummary {
 export interface ScanRequest {
   sources: string[];
   limit: number;
+}
+
+// --- Inbound enrichment & co-founder profiles (Phase 8) -------------------
+
+/** Sources the `enriching` stage attempts, as keyed in the enrichment_report. */
+export type EnrichmentSource = "github" | "web" | "linkedin" | "x";
+export type FetchOutcome = "fetched" | "blocked" | "error";
+
+export interface EnrichmentOutcome {
+  outcome: FetchOutcome;
+  signal_count: number;
+  note?: string;
+}
+
+/** Per-source fetch report on Application.enrichment_report. Externally fetched
+ *  sources (github/web) become evidence; auth-walled ones (linkedin/x) are
+ *  recorded honestly as blocked self-declared references, never fabricated. */
+export type EnrichmentReport = Partial<Record<EnrichmentSource, EnrichmentOutcome>>;
+
+/** One founder's self-declared links from the apply form (as returned on the
+ *  detail response). `github` is a bare handle or a full URL. `other_links` may
+ *  carry `role: ...` / `bio: ...` context strings the form folds in (see the
+ *  apply page - the API has no dedicated role/bio field). */
+export interface DeclaredFounderLinks {
+  name: string | null;
+  github: string | null;
+  linkedin: string | null;
+  website: string | null;
+  x: string | null;
+  other_links: string[];
+}
+
+/** One founder entry submitted on POST /applications (`founders[]`). All links
+ *  optional; a missing link never penalises a founder (cold-start protection). */
+export interface FounderLinkInput {
+  name?: string;
+  github?: string;
+  linkedin?: string;
+  website?: string;
+  x?: string;
+  other_links?: string[];
 }

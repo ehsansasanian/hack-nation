@@ -6,6 +6,7 @@ import type {
   Application,
   ApplicationDetail,
   FounderDetail,
+  FounderLinkInput,
   Memo,
   QueryResponse,
   ScanRequest,
@@ -83,6 +84,9 @@ export const api = {
     stage?: string;
     geography?: string;
     one_liner?: string;
+    // Optional per-founder self-declared links; the `enriching` stage fetches
+    // each before screening. First entry is treated as the primary founder.
+    founders?: FounderLinkInput[];
   }) =>
     request<Application>("/applications", {
       method: "POST",
