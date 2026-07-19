@@ -3,11 +3,13 @@
 import * as React from "react";
 import { Check, Loader2, Play, RefreshCw, TriangleAlert } from "lucide-react";
 
-import type { AnalysisStatus } from "@/lib/types";
+import type { AnalysisStatus, EnrichmentReport } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { EnrichmentOutcomes, hasEnrichment } from "./enrichment-outcomes";
 
 const STAGES: { key: AnalysisStatus; label: string }[] = [
+  { key: "enriching", label: "Enriching" },
   { key: "screening", label: "Screening" },
   { key: "scoring", label: "Scoring" },
   { key: "diligence", label: "Diligence" },
@@ -15,13 +17,15 @@ const STAGES: { key: AnalysisStatus; label: string }[] = [
 ];
 
 // Which stage index is currently active for a given status (-1 = queued, nothing
-// active yet). screening + scoring are one backend call surfaced as two beats.
+// active yet). Enrichment fetches self-declared links BEFORE screening; screening
+// + scoring are one backend call surfaced as two beats.
 const ACTIVE_INDEX: Record<string, number> = {
   received: -1,
-  screening: 0,
-  scoring: 1,
-  diligence: 2,
-  memo: 3,
+  enriching: 0,
+  screening: 1,
+  scoring: 2,
+  diligence: 3,
+  memo: 4,
 };
 
 /** True while analysis is running (a stepper should be shown and polling active). */
@@ -83,11 +87,13 @@ export function AnalysisProgress({
   error,
   busy,
   onAnalyze,
+  enrichmentReport,
 }: {
   status: AnalysisStatus;
   error: string | null;
   busy: boolean;
   onAnalyze: (force: boolean) => void;
+  enrichmentReport?: EnrichmentReport | null;
 }) {
   const failed = status === "failed";
   const activeIndex = ACTIVE_INDEX[status] ?? -1;
@@ -100,8 +106,10 @@ export function AnalysisProgress({
   const subtitle = failed
     ? "The pipeline stopped before completing. You can retry it."
     : status === "received"
-      ? "Screening, scoring, diligence and memo will run automatically."
-      : "Live - scores, claims and the memo appear below as each stage lands.";
+      ? "Enrichment, screening, scoring, diligence and memo will run automatically."
+      : status === "enriching"
+        ? "Fetching self-declared founder links as evidence - runs before screening."
+        : "Live - scores, claims and the memo appear below as each stage lands.";
 
   return (
     <section
@@ -155,6 +163,24 @@ export function AnalysisProgress({
           );
         })}
       </div>
+
+      {/* Enrichment outcomes: honest per-source result (fetched / blocked / error).
+          The report is committed once the enriching stage finishes, so we show a
+          "fetching" note while it runs and the compact chips from then on. */}
+      {!failed && status === "enriching" && !hasEnrichment(enrichmentReport) && (
+        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          Fetching self-declared founder links...
+        </p>
+      )}
+      {!failed && hasEnrichment(enrichmentReport) && (
+        <div className="mt-4 border-t border-border pt-3">
+          <div className="mb-1.5 text-xs font-medium text-muted-foreground">
+            Enrichment - declared links fetched as evidence
+          </div>
+          <EnrichmentOutcomes report={enrichmentReport!} />
+        </div>
+      )}
 
       {failed && error && (
         <p className="mt-4 rounded-lg border border-red-200 bg-white/60 px-3 py-2 font-mono text-xs text-red-800">
