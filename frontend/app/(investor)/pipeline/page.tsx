@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import type { Application, QueryResponse } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { Async, useFetch } from "@/components/async";
-import { QueryBar } from "@/components/pipeline/query-bar";
+import { QueryBar, type QueryFacets } from "@/components/pipeline/query-bar";
 import { QueryResults } from "@/components/pipeline/query-results";
 import {
   PipelineTable,
@@ -36,6 +36,17 @@ async function loadPipeline(): Promise<PipelineRow[]> {
 
 function bestScore(app: Application): number {
   return app.scores.reduce((m, s) => Math.max(m, s.value), 0);
+}
+
+/** Distinct sectors/stages/geos actually present in the pipeline, for the search chips. */
+function computeFacets(rows: PipelineRow[]): QueryFacets {
+  const uniq = (vals: (string | null)[]) =>
+    [...new Set(vals.filter((v): v is string => Boolean(v)))].sort();
+  return {
+    sectors: uniq(rows.map((r) => r.app.company.sector)),
+    stages: uniq(rows.map((r) => r.app.company.stage)),
+    geographies: uniq(rows.map((r) => r.app.company.geography)),
+  };
 }
 
 /** Screened-out applications sink to the bottom; the rest lead with their strongest axis. */
@@ -72,6 +83,7 @@ export default function PipelinePage() {
           onResults={setResults}
           onClear={() => setResults(null)}
           active={results !== null}
+          facets={state.data ? computeFacets(state.data) : undefined}
         />
 
         {results ? (

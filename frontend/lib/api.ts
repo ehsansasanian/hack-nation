@@ -102,11 +102,13 @@ export const api = {
   updateThesis: (payload: ThesisUpdate) =>
     request<Thesis>("/thesis", { method: "PUT", body: JSON.stringify(payload) }),
 
-  // NL query
-  query: (q: string) =>
+  // NL query. `backend` pins the parser: omit for the default (live LLM with
+  // offline fallback); pass "offline" for the deterministic parser - used by the
+  // ready-to-use chips, whose queries are already structured so they need no LLM.
+  query: (q: string, backend?: "openai" | "offline") =>
     request<QueryResponse>("/query", {
       method: "POST",
-      body: JSON.stringify({ q }),
+      body: JSON.stringify(backend ? { q, backend } : { q }),
     }),
 
   // Sourcing
