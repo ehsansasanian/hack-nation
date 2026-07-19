@@ -70,6 +70,91 @@ _POS_TERMS = (
     "acquisition", "strong clinical signal",
 )
 
+# --- honestly-generatable analysis vocab (Technology / Market / Competition / Exit) ---
+_PROPRIETARY_KW = (
+    "proprietary", "patent", "patented", "novel architecture", "custom kernel",
+    "in-house model", "trained our own", "proprietary dataset", "proprietary data",
+    "data moat", "custom silicon", "our own model", "from scratch",
+)
+_COMMODITIZE_KW = (
+    "open source", "open-source", "wrapper", "gpt-4", "openai api", "llm api",
+    "off-the-shelf", "fork", "commodity", "thin layer", "prompt",
+)
+_MOAT_KW = (
+    "network effect", "switching cost", "data moat", "proprietary data", "lock-in",
+    "deep integration", "workflow lock", "regulatory moat", "distribution",
+)
+# Competitor cluster archetypes per sector - analysis, not a sourced database.
+_COMPETITION_CLUSTERS: dict[str, list[str]] = {
+    "ai infra": [
+        "hyperscaler-native tooling (AWS/GCP/Azure managed services)",
+        "open-source frameworks and self-hosted stacks",
+        "well-funded infra startups chasing the same wedge",
+    ],
+    "fintech": [
+        "incumbent banks, processors and ERPs",
+        "horizontal B2B SaaS with a finance module",
+        "vertical fintech startups",
+    ],
+    "health": [
+        "incumbent EHR / clinical-software vendors",
+        "big-tech health initiatives",
+        "point-solution digital-health startups",
+    ],
+    "devtools": [
+        "incumbent developer platforms (GitHub/GitLab/Atlassian)",
+        "open-source community tooling",
+        "point-solution devtool startups",
+    ],
+}
+_DEFAULT_CLUSTERS = [
+    "incumbents already serving the category",
+    "adjacent horizontal platforms extending into it",
+    "early-stage startups chasing the same wedge",
+]
+_EXIT_ACQUIRERS: dict[str, str] = {
+    "ai infra": "cloud/infra incumbents and larger AI-platform companies",
+    "fintech": "banks, payment networks and horizontal SaaS consolidators",
+    "health": "EHR vendors, medtech incumbents and large payers/providers",
+    "devtools": "developer-platform incumbents and larger DevOps vendors",
+}
+
+_MARKET_FIGURE_RE = re.compile(
+    r"\$\s?\d[\d.,]*\s?(?:b|bn|billion|t|trillion|m|million)\b", re.IGNORECASE
+)
+_PRICING_RE = re.compile(
+    r"\$\s?\d[\d.,]*\s?(?:k|m)?\s?(?:/|per\s)?\s?(?:seat|user|month|mo\b|year|yr\b|acv|contract)",
+    re.IGNORECASE,
+)
+
+
+_MARKET_CTX_TERMS = ("tam", "sam", "opportunity", "addressable", "spend", "industry", "market size")
+
+
+def _market_figure(blob: str) -> str | None:
+    """First money figure stated in a genuine market/TAM context, or None (never invented).
+
+    Guards against two common false positives: a *raise* figure ("raising $1.5M seed")
+    and the word "market" inside "mid-market". A raise/round context disqualifies the
+    figure, and a bare "market" only counts when it is not part of "mid-market".
+    """
+    for m in _MARKET_FIGURE_RE.finditer(blob):
+        pre = blob[max(0, m.start() - 30) : m.start()]
+        post = blob[m.end() : m.end() + 30]
+        if re.search(r"rais|seed|round|pre-seed|invest", pre):
+            continue  # a raise/round figure is not a market size
+        window = pre + " " + post
+        market_word = re.search(r"(?<!mid-)market", window) is not None
+        if market_word or _hits(window, _MARKET_CTX_TERMS):
+            return re.sub(r"\s+", "", m.group(0))
+    return None
+
+
+def _pricing_figure(blob: str) -> str | None:
+    m = _PRICING_RE.search(blob)
+    return _clean(m.group(0)) if m else None
+
+
 _TOKEN_RE = re.compile(r"[a-z0-9$.,%/-]+")
 _NUM_RE = re.compile(r"\$?\d[\d,]*\.?\d*\s?[kmb%]?", re.IGNORECASE)
 _STOP = {
@@ -399,13 +484,106 @@ class OfflineDiligenceBackend(DiligenceBackend):
         swot = self._swot(ctx, by_axis, assessments)
         pnp = self._problem_product(ctx)
         kpis = self._kpis(assessments)
+        # Honestly-generatable analysis sections: deterministic equivalents of the LLM
+        # path, built from the deck + stored signals, with assumptions/labels explicit.
+        blob = _blob(
+            ctx.deck_text, c.one_liner,
+            *[a.text for a in assessments],
+            *[_signal_text(s) for s in ctx.evidence_signals],
+        )
         return MemoSections(
             company_snapshot=snapshot,
             investment_hypotheses=hyp,
             swot=swot,
             problem_and_product=pnp,
             traction_and_kpis=kpis,
+            technology_defensibility=self._technology(ctx, blob),
+            market_sizing=self._market_sizing(ctx, blob),
+            competition=self._competition(ctx, blob),
+            exit_perspective=self._exit_perspective(ctx),
         )
+
+    # --- honestly-generatable analysis sections (deterministic) ------------
+    def _technology(self, ctx: DiligenceContext, blob: str) -> str:
+        proprietary = [t for t in _PROPRIETARY_KW if t in blob]
+        commodity = [t for t in _COMMODITIZE_KW if t in blob]
+        moats = [t for t in _MOAT_KW if t in blob]
+        oss_stars = sum(
+            int(s.content.get("stars") or 0)
+            for s in ctx.evidence_signals
+            if s.source == "github" and s.content.get("stars")
+        )
+        lines = [
+            "- Proprietary signals: "
+            + (", ".join(sorted(set(proprietary))) if proprietary else "none clearly claimed in the deck")
+            + ".",
+            "- Commoditizable / at-risk: "
+            + (", ".join(sorted(set(commodity))) if commodity else "no obvious commodity dependency stated")
+            + ".",
+            "- Moat type: " + (", ".join(sorted(set(moats))) if moats else "none evident from the material on file") + ".",
+        ]
+        if oss_stars:
+            lines.append(
+                f"- Open-source traction ({oss_stars} GitHub stars) is distribution, not a moat by itself."
+            )
+        if proprietary and not commodity:
+            read = "leans defensible on the claimed proprietary work, pending technical diligence"
+        elif commodity and not proprietary:
+            read = "leans commoditizable - defensibility would rest on execution, speed and data, not the core tech"
+        else:
+            read = "mixed - defensibility is unproven at this stage and needs a technical deep-dive"
+        lines.append(f"- Read (assessment, not an audit): {read}.")
+        return "\n".join(lines)
+
+    def _market_sizing(self, ctx: DiligenceContext, blob: str) -> str:
+        tam = _market_figure(blob)
+        pricing = _pricing_figure(blob)
+        sector = ctx.company.sector or "the target"
+        top_down = (
+            f"deck claims a {tam} market (as stated, unverified)"
+            if tam
+            else f"no top-down figure stated; the {sector} category would need an analyst source we do not hold"
+        )
+        bottom_up = (
+            f"deck cites pricing of {pricing}; a credible bottom-up still needs a paying-customer count x ACV, "
+            + ("which is on file" if _hits(blob, ("paying", "customers", "design partner")) else "which is not disclosed")
+            if pricing
+            else "no unit pricing stated, so a bottom-up build is not yet possible from the deck"
+        )
+        return "\n".join([
+            "Sizing method is stated explicitly; figures are the company's own unless marked.",
+            f"- Top-down: {top_down}.",
+            f"- Bottom-up: {bottom_up}.",
+            "- Assumptions: any deck figure is taken at face value (unverified); no independent market database is used.",
+        ])
+
+    def _competition(self, ctx: DiligenceContext, blob: str) -> str:
+        sector = (ctx.company.sector or "").lower()
+        clusters = _COMPETITION_CLUSTERS.get(sector, _DEFAULT_CLUSTERS)
+        named = [
+            _clean(line)
+            for line in ctx.deck_text.splitlines()
+            if _hits(line.lower(), ("competitor", "competition", " vs ", "unlike ", "incumbent", "alternative to"))
+        ][:3]
+        lines = ["Named competitor clusters (analysis, not a sourced database):"]
+        lines += [f"- {c}" for c in clusters]
+        lines.append(
+            "- Deck-stated competition: "
+            + ("; ".join(named) if named else "the deck does not name direct competitors")
+            + "."
+        )
+        return "\n".join(lines)
+
+    def _exit_perspective(self, ctx: DiligenceContext) -> str:
+        sector = (ctx.company.sector or "").lower()
+        acquirers = _EXIT_ACQUIRERS.get(sector, "category incumbents and adjacent platform vendors")
+        stage = ctx.company.stage or "pre-seed"
+        return "\n".join([
+            "Hypothesis (directional, not a forecast - does not affect the score):",
+            f"- Most plausible path at {stage}: strategic acquisition by {acquirers}.",
+            "- IPO path: requires category leadership at scale - a long-dated, low-probability outcome from here.",
+            "- Caveat: exit framing this early is speculative and rests on no term sheet or banker input.",
+        ])
 
     def _hypotheses(self, ctx, by_axis, assessments) -> str:
         lines: list[str] = []

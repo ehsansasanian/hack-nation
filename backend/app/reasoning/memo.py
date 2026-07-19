@@ -1,14 +1,25 @@
-"""Phase 4 memo generator.
+"""Phase 4 + 8 memo generator - the full VC memo checklist, always visible.
 
-``generate_memo`` produces the five required sections (Appendix 1) - Company
-snapshot, Investment hypotheses, SWOT, Problem & product, Traction & KPIs - and
-nothing else. The narrative prose comes from the diligence backend (LLM or
-offline); the orchestrator then, backend-agnostically:
+``generate_memo`` emits every section of ``MEMO_SECTION_ORDER`` in fixed VC order,
+so the memo reads like a complete investment memo and gaps show as awareness rather
+than a silently missing section. Sections come from two places:
 
-* renders every claim with its trust level (so it can never be silently dropped),
-* flags missing data explicitly ("Cap table: not disclosed") - never fabricated,
-* attaches a recommendation (invest $100K / pass / need-more-info) tied to thesis
-  fit and the three axis scores, which are shown separately and never averaged.
+* nine narrative sections from the diligence backend (LLM or offline) - the five
+  evidence-backed sections (Appendix 1) plus the honestly-generatable analysis
+  sections (Technology & defensibility, Market sizing with stated assumptions,
+  Competition as named clusters, Exit perspective labeled hypothesis);
+* the rest built here, deterministically and identically on both backends, from
+  stored data: Team & history, Financials & round structure, Cap table, the Due
+  diligence log (generated from the reasoning trace, not prose), the Bear case, and
+  Mandate fit.
+
+Backend-agnostic guarantees the orchestrator enforces:
+
+* every claim is rendered with its trust level (so it can never be silently dropped),
+* data-dependent sections with no evidence render the exact muted line
+  ``"Not disclosed at this stage."`` - never fabricated, never silently omitted,
+* a recommendation (invest $100K / pass / need-more-info) tied to thesis fit and the
+  three axis scores, which are shown separately and never averaged.
 
 The memo is upserted into the ``Memo`` table (a re-run replaces, never duplicates)
 and the application is marked ``memo_ready``.
@@ -16,6 +27,7 @@ and the application is marked ``memo_ready``.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 
 from openai import OpenAIError
@@ -37,7 +49,36 @@ SECTION_TITLES = {
     "swot": "SWOT",
     "problem_and_product": "Problem & product",
     "traction_and_kpis": "Traction & KPIs",
+    "technology_defensibility": "Technology & defensibility",
+    "market_sizing": "Market sizing",
+    "competition": "Competition",
+    "exit_perspective": "Exit perspective",
 }
+
+# The full VC memo checklist in fixed order - every memo renders all of these, always,
+# so gaps show as awareness (a muted "Not disclosed at this stage." line) rather than a
+# silently missing section. Backend-prose sections come from ``MemoSections``; the rest
+# are built deterministically here from stored data (identical on both backends).
+MEMO_SECTION_ORDER = (
+    "Company snapshot",
+    "Investment hypotheses",
+    "SWOT",
+    "Team & history",
+    "Problem & product",
+    "Technology & defensibility",
+    "Market sizing",
+    "Competition",
+    "Traction & KPIs",
+    "Financials & round structure",
+    "Cap table",
+    "Due diligence log",
+    "Exit perspective",
+    "Bear case",
+    "Mandate fit",
+)
+
+# Exact line for a data-dependent section with no evidence on file (never fabricated).
+NOT_DISCLOSED = "Not disclosed at this stage."
 
 
 @dataclass(slots=True)
@@ -93,25 +134,34 @@ def generate_memo(
 
     rendered = _finalise_sections(sections, ctx, assessments)
 
-    # Phase 8 deterministic sections, built backend-agnostically from stored data so
-    # both backends produce them identically: Team & history (multi-founder only),
-    # Bear case (from validator + truth-gap outputs), Mandate fit (constraints vs
-    # realized values). Inserted after the five required sections.
+    # Deterministic sections, built backend-agnostically from stored data so both
+    # backends produce them identically. Together with the nine backend-prose sections
+    # they make up the full VC checklist, assembled below in fixed VC order:
+    #   Team & history       - per-founder background + complementarity verdict (always)
+    #   Financials & round   - claimed figures with trust, else "Not disclosed at this stage."
+    #   Cap table            - ownership/equity if on file, else "Not disclosed at this stage."
+    #   Due diligence log    - GENERATED FROM THE TRACE: checks, sources, validator, open items
+    #   Bear case            - from validator + truth-gap outputs
+    #   Mandate fit          - configured constraints vs realized values
     mandate_fit = evaluate_mandate_fit(
         thesis, ctx.company, ctx.founders, list(app.claims), ctx.scores,
         ctx.deck_text, ctx.evidence_signals,
     )
-    team_section = _team_and_history_section(ctx)
-    if team_section:
-        rendered["Team & history"] = team_section
+    rendered["Team & history"] = _team_and_history_section(ctx)
+    rendered["Financials & round structure"] = _financials_section(ctx, assessments)
+    rendered["Cap table"] = _cap_table_section(ctx, assessments)
+    rendered["Due diligence log"] = _due_diligence_log(app, ctx)
     rendered["Bear case"] = _bear_case_section(app, ctx, assessments, mandate_fit)
-    fit_block = render_mandate_fit(mandate_fit)
-    if fit_block:
-        rendered["Mandate fit"] = fit_block
+    rendered["Mandate fit"] = render_mandate_fit(mandate_fit) or "No mandate constraints configured."
+
+    # Emit the full checklist in fixed order; any stray key lands at the end (defensive).
+    ordered = {t: rendered[t] for t in MEMO_SECTION_ORDER if t in rendered}
+    for title, body in rendered.items():
+        ordered.setdefault(title, body)
 
     recommendation = _recommendation(app, ctx, fit, assessments, mandate_fit)
 
-    memo = _upsert_memo(session, application_id, rendered, recommendation)
+    memo = _upsert_memo(session, application_id, ordered, recommendation)
     app.status = "memo_ready"
     session.commit()
     session.refresh(memo)
@@ -169,10 +219,141 @@ def _missing_data_flags(ctx: DiligenceContext, assessments: list[ClaimAssessment
     return [label for label, terms in _GAP_TOPICS if not any(t in blob for t in terms)]
 
 
-def _team_and_history_section(ctx: DiligenceContext) -> str | None:
-    """Per-founder background + complementarity verdict + gaps (multi-founder only)."""
-    if len(ctx.founders) <= 1:
-        return None
+# Round-structure and cap-table vocab for the data-dependent sections. A line only
+# renders when it is actually stated in the deck - otherwise the section is the exact
+# muted "Not disclosed at this stage." line (never fabricated).
+_ROUND_KW = (
+    "raising", "raise ", " round", "safe", "convertible", "priced", "valuation",
+    "pre-money", "post-money", "runway", "burn rate", "burn:", "instrument",
+)
+_ROUND_STRONG = ("safe", "convertible", "priced", "pre-money", "post-money", "valuation")
+_CAPTABLE_KW = (
+    "cap table", "captable", "ownership", "% owned", "fully diluted", "option pool",
+    "esop", "shares outstanding", "equity split", "founder equity", "dilution",
+)
+
+
+def _has_digit(text: str) -> bool:
+    return any(ch.isdigit() for ch in text)
+
+
+def _deck_lines_matching(deck_text: str, keywords: tuple[str, ...], require_digit: bool) -> list[str]:
+    """De-duplicated, cleaned deck lines that mention any keyword (optionally + a digit)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in deck_text.splitlines():
+        line = raw.strip().strip("-•* ").strip()
+        low = line.lower()
+        if len(line) < 6 or low in seen:
+            continue
+        if not any(k in low for k in keywords):
+            continue
+        if require_digit and not (_has_digit(low) or any(s in low for s in _ROUND_STRONG)):
+            continue
+        seen.add(low)
+        out.append(line)
+    return out
+
+
+def _financials_section(ctx: DiligenceContext, assessments: list[ClaimAssessment]) -> str:
+    """Claimed financial figures with trust badges + any round structure stated, else
+    the exact muted not-disclosed line. Never computes a figure from nothing."""
+    lines = [_render_claim(a) for a in assessments if a.category == "revenue"]
+    for rl in _deck_lines_matching(ctx.deck_text, _ROUND_KW, require_digit=True)[:3]:
+        lines.append(f"- [unverified] (financials) {rl}")
+    return "\n".join(lines) if lines else NOT_DISCLOSED
+
+
+def _cap_table_section(ctx: DiligenceContext, assessments: list[ClaimAssessment]) -> str:
+    """Ownership / cap-table lines if the deck states any, else the muted not-disclosed
+    line. Almost always absent at pre-seed - a visible gap, not padding."""
+    stated = _deck_lines_matching(ctx.deck_text, _CAPTABLE_KW, require_digit=False)
+    claim_hits = [a.text for a in assessments if any(k in a.text.lower() for k in _CAPTABLE_KW)]
+    lines = stated + [c for c in claim_hits if c not in stated]
+    if not lines:
+        return NOT_DISCLOSED
+    header = "Ownership / cap table as stated (self-declared, unverified):"
+    return header + "\n" + "\n".join(f"- {line}" for line in lines[:4])
+
+
+def _due_diligence_log(app: Application, ctx: DiligenceContext) -> str:
+    """The diligence log, GENERATED FROM STORED TRACE DATA (not LLM prose): what was
+    checked per claim, which sources were fetched, validator outcomes, and what remains
+    open. Deterministic and identical on both backends."""
+    claims = list(app.claims)
+    by_trust = Counter(c.trust_level or "unverified" for c in claims)
+    lines: list[str] = []
+    if claims:
+        lines.append(
+            f"- Claims cross-referenced against stored signals: {len(claims)} total - "
+            f"{by_trust.get('verified', 0)} verified, {by_trust.get('consistent', 0)} consistent, "
+            f"{by_trust.get('unverified', 0)} unverified, {by_trust.get('contradicted', 0)} contradicted."
+        )
+    else:
+        lines.append("- No self-asserted claims were extracted to check.")
+    for c in claims:
+        if c.trust_level == "contradicted":
+            lines.append(f'- Contradiction found ({c.category}): "{c.text}".')
+
+    report = app.enrichment_report or {}
+    if report:
+        parts: list[str] = []
+        for source, entry in report.items():
+            outcome = entry.get("outcome", "?")
+            cnt = entry.get("signal_count", 0)
+            if outcome == "fetched":
+                parts.append(f"{source}: fetched ({cnt} signal{'s' if cnt != 1 else ''})")
+            elif outcome == "blocked":
+                parts.append(f"{source}: blocked (self-declared reference)")
+            else:
+                parts.append(f"{source}: {outcome}")
+        lines.append("- Sources fetched (enrichment): " + "; ".join(parts) + ".")
+    else:
+        lines.append(
+            "- Enrichment: no external founder links were declared; diligence ran against "
+            "the deck and the public signals on file."
+        )
+
+    vparts = [f"{len(ctx.scores)} axis rationale(s) re-checked"]
+    refuted = [s for s in ctx.scores if s.validator_supported is False]
+    if refuted:
+        vparts.append(f"{len(refuted)} refuted ({', '.join(s.axis.replace('_', ' ') for s in refuted)})")
+    downgraded = [c for c in claims if c.validator_note]
+    if downgraded:
+        vparts.append(f"{len(downgraded)} claim(s) downgraded on re-check")
+    lines.append("- Validator (self-correction): " + ", ".join(vparts) + ".")
+
+    open_items: list[str] = []
+    unverified_critical = [
+        c for c in claims if c.category in ("traction", "revenue") and c.trust_level == "unverified"
+    ]
+    if unverified_critical:
+        open_items.append(
+            f"{len(unverified_critical)} unverified traction/revenue claim(s) to confirm with the founder"
+        )
+    blocked = [src for src, e in report.items() if e.get("outcome") == "blocked"]
+    if blocked:
+        open_items.append("blocked sources to verify out-of-band: " + ", ".join(blocked))
+    errored = [src for src, e in report.items() if e.get("outcome") == "error"]
+    if errored:
+        open_items.append("fetch errors to retry: " + ", ".join(errored))
+    lines.append(
+        "- Still open: "
+        + ("; ".join(open_items) if open_items else "nothing flagged - checkable claims resolved and no sources blocked")
+        + "."
+    )
+
+    header = (
+        "Generated from the reasoning trace (checks run, sources fetched, validator "
+        "outcomes, open items) - not written prose:"
+    )
+    return header + "\n" + "\n".join(lines)
+
+
+def _team_and_history_section(ctx: DiligenceContext) -> str:
+    """Per-founder background + complementarity verdict + gaps (always rendered)."""
+    if not ctx.founders:
+        return "Founder details not resolved from the application."
     sbf: dict[int, list] = {}
     for s in ctx.evidence_signals:
         if s.founder_id is not None:
