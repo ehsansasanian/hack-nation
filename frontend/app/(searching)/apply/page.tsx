@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { api, ApiError } from "@/lib/api";
-import type { FounderLinkInput } from "@/lib/types";
+import type { FounderLinkInput, Thesis } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,6 +207,95 @@ function FounderEntry({
   );
 }
 
+// Matches the Input component styling so the select reads as the same control.
+const SELECT_CLASS =
+  "flex h-9 w-full min-w-0 rounded-lg border border-border bg-background px-3 py-1 text-sm shadow-sm transition-colors outline-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40";
+
+const OTHER_VALUE = "__other__";
+
+/** A select populated from the active mandate (its sectors or stages) plus an
+ *  "Other…" escape hatch that reveals a free-text input for off-mandate values.
+ *  `options`: undefined = mandate still loading, null = fetch failed (degrade
+ *  gracefully to a plain free-text input), string[] = the mandate's values.
+ *  The screening semantics are unchanged - the dropdown just steers users toward
+ *  in-mandate values so an in-scope company is not screened out on a typo. */
+function MandateSelect({
+  value,
+  onChange,
+  options,
+  selectPlaceholder,
+  freeTextPlaceholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[] | null | undefined;
+  selectPlaceholder: string;
+  freeTextPlaceholder: string;
+}) {
+  const [other, setOther] = React.useState(false);
+
+  // Mandate still loading: a disabled placeholder select.
+  if (options === undefined) {
+    return (
+      <select className={SELECT_CLASS} disabled aria-label="loading">
+        <option>Loading fund mandate…</option>
+      </select>
+    );
+  }
+
+  // Mandate unavailable (fetch failed): degrade gracefully to free text.
+  if (options === null) {
+    return (
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={freeTextPlaceholder}
+      />
+    );
+  }
+
+  const matchesOption = options.some(
+    (o) => o.trim().toLowerCase() === value.trim().toLowerCase(),
+  );
+  const showOther = other || (!!value && !matchesOption);
+  const selectValue = showOther ? OTHER_VALUE : value;
+
+  return (
+    <div className="space-y-2">
+      <select
+        value={selectValue}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === OTHER_VALUE) {
+            setOther(true);
+            onChange("");
+          } else {
+            setOther(false);
+            onChange(v);
+          }
+        }}
+        className={SELECT_CLASS}
+      >
+        <option value="">{selectPlaceholder}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+        <option value={OTHER_VALUE}>Other…</option>
+      </select>
+      {showOther && (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={freeTextPlaceholder}
+          autoFocus
+        />
+      )}
+    </div>
+  );
+}
+
 export default function ApplyPage() {
   const router = useRouter();
   const [company, setCompany] = React.useState({
@@ -221,6 +310,29 @@ export default function ApplyPage() {
   const [fileName, setFileName] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // Active mandate, fetched at runtime to populate the sector/stage selects.
+  // undefined = loading, null = fetch failed (selects degrade to free text).
+  const [thesis, setThesis] = React.useState<Thesis | null | undefined>(undefined);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    api
+      .thesis()
+      .then((t) => {
+        if (!cancelled) setThesis(t);
+      })
+      .catch(() => {
+        if (!cancelled) setThesis(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sectorOptions =
+    thesis === undefined ? undefined : thesis === null ? null : thesis.sectors;
+  const stageOptions =
+    thesis === undefined ? undefined : thesis === null ? null : thesis.stages;
 
   const setC = (k: keyof typeof company, v: string) =>
     setCompany((prev) => ({ ...prev, [k]: v }));
@@ -289,18 +401,30 @@ export default function ApplyPage() {
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Sector" optional>
-              <Input
+            <Field
+              label="Sector"
+              optional
+              hint="Sectors outside the fund's mandate are screened out automatically."
+            >
+              <MandateSelect
                 value={company.sector}
-                onChange={(e) => setC("sector", e.target.value)}
-                placeholder="AI infra"
+                onChange={(v) => setC("sector", v)}
+                options={sectorOptions}
+                selectPlaceholder="Select a sector"
+                freeTextPlaceholder="AI infra"
               />
             </Field>
-            <Field label="Stage" optional>
-              <Input
+            <Field
+              label="Stage"
+              optional
+              hint="Stages outside the fund's mandate are screened out automatically."
+            >
+              <MandateSelect
                 value={company.stage}
-                onChange={(e) => setC("stage", e.target.value)}
-                placeholder="pre-seed"
+                onChange={(v) => setC("stage", v)}
+                options={stageOptions}
+                selectPlaceholder="Select a stage"
+                freeTextPlaceholder="pre-seed"
               />
             </Field>
             <Field label="Geography" optional>
