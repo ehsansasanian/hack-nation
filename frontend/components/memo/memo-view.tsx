@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Ban } from "lucide-react";
+import { Ban, Printer } from "lucide-react";
 
 import { api } from "@/lib/api";
 import type { Claim, Trace } from "@/lib/types";
 import { Async, useFetch } from "@/components/async";
 import { PageHeader } from "@/components/page-header";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TrustBadge } from "@/components/trust-badge";
 import { TraceProvider, WhyButton } from "@/components/trace/trace-panel";
@@ -140,7 +140,7 @@ function Traction({ text, claims }: { text: string; claims: Claim[] }) {
             <span className="min-w-0">{c.text}</span>
             <span className="flex shrink-0 items-center gap-2">
               <TrustBadge level={c.trust_level} />
-              <WhyButton kind="claim" refId={String(c.id)} />
+              <WhyButton kind="claim" refId={String(c.id)} className="print-hide" />
             </span>
           </li>
         ))}
@@ -206,12 +206,21 @@ export function MemoView({ id }: { id: string }) {
               }
               subtitle="Investment memo - every claim carries its trust level; gaps are flagged, not filled."
               actions={
-                <Link
-                  href={`/applications/${app.id}`}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  Back to detail
-                </Link>
+                <span className="flex items-center gap-2 print-hide">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.print()}
+                  >
+                    <Printer /> Download PDF
+                  </Button>
+                  <Link
+                    href={`/applications/${app.id}`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    Back to detail
+                  </Link>
+                </span>
               }
             />
             <div className="mx-auto max-w-3xl space-y-4 px-8 py-6">
