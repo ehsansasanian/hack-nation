@@ -226,3 +226,37 @@ class Memo(Base):
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     application: Mapped["Application"] = relationship(back_populates="memo")
+
+
+class RecombinationNote(Base):
+    """Co-founder & idea recombination (Phase 8) - a HYPOTHETICAL what-if note.
+
+    Stored in its own table, next to (never inside) the memo, because it is
+    hypothetical by definition and must never be mistaken for the real assessment.
+    For a low-scoring application it records the weak axes/gaps, a deterministic
+    shortlist of complementary founders drawn from Memory (skill/domain fit +
+    availability = not tied to an active in-thesis application), suggested idea
+    pivots, and a clearly-labeled CONTINGENT IC note ("investible if X joins /
+    pivot validated - re-evaluate in N weeks"). Generating one NEVER mutates the
+    real Score rows - it is additive and side-effect free on the assessment.
+    """
+
+    __tablename__ = "recombination_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("applications.id"), unique=True, nullable=False
+    )
+    # The current, real standing (unchanged by this note - it is a what-if).
+    standing: Mapped[str | None] = mapped_column(Text)
+    # The weak axes / gaps that triggered the recombination (from stored scores + team read).
+    weak_axes: Mapped[list] = mapped_column(JSON, default=list)  # [{axis, value, note}]
+    gaps: Mapped[list] = mapped_column(JSON, default=list)  # [str]
+    # Complementary-founder shortlist (deterministic) + suggested idea pivots.
+    candidates: Mapped[list] = mapped_column(JSON, default=list)
+    idea_pivots: Mapped[list] = mapped_column(JSON, default=list)  # [str]
+    # The contingent IC note - always explicitly hypothetical.
+    contingent_note: Mapped[str | None] = mapped_column(Text)
+    reeval_weeks: Mapped[int | None] = mapped_column()
+    backend: Mapped[str | None] = mapped_column(String)  # gpt-4o-mini / offline-deterministic
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

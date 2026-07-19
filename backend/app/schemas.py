@@ -268,6 +268,43 @@ class TraceOut(_ORM):
     steps: list[TraceStepOut] = []
 
 
+# --- Phase 8: co-founder & idea recombination -------------------------------
+
+
+class RecombinationCandidateOut(BaseModel):
+    """One complementary founder proposed from Memory (hypothetical)."""
+
+    founder_id: int
+    name: str
+    sector: str | None = None
+    founder_score: float | None = None
+    technical: bool = False
+    commercial: bool = False
+    fills: list[str] = []  # gaps this founder would close: technical / commercial / domain
+    availability: str = ""  # why they are recombinable (not tied to an active in-thesis deal)
+    why: str = ""  # complementarity rationale
+    match_score: float = 0.0
+
+
+class RecombinationOut(BaseModel):
+    """A HYPOTHETICAL recombination note for a low-scoring application.
+
+    Complementary co-founder proposals + idea pivots + a contingent IC note. Never
+    reflects a change to the real axis scores - it is a what-if, clearly labeled.
+    """
+
+    application_id: int
+    company: str
+    standing: str  # the current, real standing (unchanged by this note)
+    weak_axes: list[dict] = []
+    gaps: list[str] = []
+    candidates: list[RecombinationCandidateOut] = []
+    idea_pivots: list[str] = []
+    contingent_note: str = ""
+    reeval_weeks: int = 8
+    backend: str = "offline-deterministic"
+
+
 # --- Phase 3: outbound sourcing ---------------------------------------------
 
 

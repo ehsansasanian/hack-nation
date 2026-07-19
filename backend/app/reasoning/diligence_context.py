@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
-from app.models import Application, Company, Founder, Signal
+from app.models import Application, Company, Founder, Score, Signal
 from app.reasoning.context import build_context
 
 # Sources whose text is a self-asserted claim (vs objective evidence). The deck is

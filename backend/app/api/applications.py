@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -10,11 +11,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
 from app.ingestion.pipeline import CompanyHint, FounderHint, RawSignal, ingest_signal
-from app.models import Application, Memo
+from app.models import Application, Memo, RecombinationNote
 from app.sourcing.github import normalize_github_handle
-from app.reasoning.analysis import acquire, is_inflight, run_analysis_task
+from app.reasoning.analysis import acquire, run_analysis_task
 from app.reasoning.diligence import DiligenceOutcome, run_diligence
 from app.reasoning.memo import generate_memo
+from app.reasoning.recombination import RecombinationResult, generate_recombination
 from app.reasoning.service import ScoringOutcome, score_application
 from app.reasoning.trace import Trace, build_trace
 from app.schemas import (
@@ -27,6 +29,7 @@ from app.schemas import (
     DiligenceResultOut,
     FounderOut,
     MemoOut,
+    RecombinationOut,
     ScoreOut,
     ScoringResultOut,
     ThesisFitOut,
@@ -351,3 +354,70 @@ def get_memo(application_id: int, session: Session = Depends(get_session)) -> Me
             detail="No memo yet. POST /applications/{id}/memo to generate one.",
         )
     return memo
+
+
+def _to_recombination_out(result: RecombinationResult) -> RecombinationOut:
+    return RecombinationOut(
+        application_id=result.application_id,
+        company=result.company,
+        standing=result.standing,
+        weak_axes=result.weak_axes,
+        gaps=result.gaps,
+        candidates=[asdict(c) for c in result.candidates],
+        idea_pivots=result.idea_pivots,
+        contingent_note=result.contingent_note,
+        reeval_weeks=result.reeval_weeks,
+        backend=result.backend,
+    )
+
+
+@router.post("/applications/{application_id}/recombine", response_model=RecombinationOut)
+def recombine_application(
+    application_id: int,
+    backend: str | None = None,
+    session: Session = Depends(get_session),
+) -> RecombinationOut:
+    """Co-founder & idea recombination for a low-scoring application (HYPOTHETICAL).
+
+    Reads the weak axes/gaps, shortlists complementary founders from Memory
+    (skill/domain fit + availability = not tied to an active in-thesis deal),
+    suggests idea pivots and emits a clearly-labeled contingent IC note. Real axis
+    scores are never mutated. ``backend`` may pin ``openai`` or ``offline``; the
+    candidate shortlist is deterministic on both paths, only the note narrative
+    differs. Upserts the note (a re-run replaces, never duplicates).
+    """
+    try:
+        result = generate_recombination(session, application_id, prefer_backend=backend)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_recombination_out(result)
+
+
+@router.get("/applications/{application_id}/recombination", response_model=RecombinationOut)
+def get_recombination(
+    application_id: int, session: Session = Depends(get_session)
+) -> RecombinationOut:
+    """Fetch the stored recombination note, or 404 if one has not been generated."""
+    note = session.scalar(
+        select(RecombinationNote).where(RecombinationNote.application_id == application_id)
+    )
+    if note is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No recombination note yet. POST /applications/{id}/recombine to generate one.",
+        )
+    app = session.get(
+        Application, application_id, options=[selectinload(Application.company)]
+    )
+    return RecombinationOut(
+        application_id=note.application_id,
+        company=app.company.name if app else "",
+        standing=note.standing or "",
+        weak_axes=note.weak_axes or [],
+        gaps=note.gaps or [],
+        candidates=note.candidates or [],
+        idea_pivots=note.idea_pivots or [],
+        contingent_note=note.contingent_note or "",
+        reeval_weeks=note.reeval_weeks or 8,
+        backend=note.backend or "offline-deterministic",
+    )
