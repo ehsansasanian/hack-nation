@@ -305,6 +305,76 @@ class RecombinationOut(BaseModel):
     backend: str = "offline-deterministic"
 
 
+# --- Phase 8: founders directory + team matching (Database tab) --------------
+
+
+class DirectoryFounderOut(BaseModel):
+    """One row in the founders directory (Database tab)."""
+
+    id: int
+    name: str
+    github_handle: str | None = None
+    founder_score: float | None = None
+    technical: bool = False
+    commercial: bool = False
+    classification: str = "unclassified"  # technical / commercial / technical + commercial
+    domain: str | None = None  # sectors the founder has worked in
+    available: bool = True  # not tied to an active in-thesis application
+    availability: str = ""  # human-readable reason
+    returning: bool = False  # track record across more than one company
+
+
+class MatchFounderOut(BaseModel):
+    """Compact per-founder view inside a match result."""
+
+    id: int
+    name: str
+    github_handle: str | None = None
+    founder_score: float | None = None
+    technical: bool = False
+    commercial: bool = False
+    classification: str = "unclassified"
+    domain: str | None = None
+    available: bool = True
+    availability: str = ""
+
+
+class FounderMatchRequest(BaseModel):
+    founder_a: int
+    founder_b: int
+
+
+class FounderMatchOut(BaseModel):
+    """A HYPOTHETICAL team read on a pairing - the existing complementarity engine.
+
+    Never changes either founder's persistent score or any application assessment.
+    """
+
+    founder_a: MatchFounderOut
+    founder_b: MatchFounderOut
+    sector: str | None = None
+    solo: bool = False
+    technical: bool = False
+    commercial: bool = False
+    complementary: bool = False
+    domain_gap: bool = False
+    prior_collab: bool = False
+    verdict: str = ""
+    lift: float = 0.0
+    gaps: list[str] = []
+    patterns: str = ""
+    rationale: str = ""
+    hypothetical_team: str = ""
+
+
+class FounderMatchesOut(BaseModel):
+    """Ranked complementary, available founders for one founder ("find matches")."""
+
+    founder: MatchFounderOut
+    needs: list[str] = []  # coverage the founder is missing: technical / commercial
+    candidates: list[RecombinationCandidateOut] = []
+
+
 # --- Phase 3: outbound sourcing ---------------------------------------------
 
 

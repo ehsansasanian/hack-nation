@@ -5,8 +5,11 @@ import type {
   AnalyzeResult,
   Application,
   ApplicationDetail,
+  DirectoryFounder,
   FounderDetail,
   FounderLinkInput,
+  FounderMatch,
+  FounderMatches,
   Memo,
   QueryResponse,
   Recombination,
@@ -113,6 +116,15 @@ export const api = {
 
   // Founders
   founder: (id: number | string) => request<FounderDetail>(`/founders/${id}`),
+  // Database tab: directory + team matching (deterministic, $0 LLM).
+  founders: () => request<DirectoryFounder[]>("/founders"),
+  matchFounders: (founderA: number, founderB: number) =>
+    request<FounderMatch>("/founders/match", {
+      method: "POST",
+      body: JSON.stringify({ founder_a: founderA, founder_b: founderB }),
+    }),
+  founderMatches: (id: number | string) =>
+    request<FounderMatches>(`/founders/${id}/matches`),
 
   // Thesis
   thesis: () => request<Thesis>("/thesis"),

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, LayoutDashboard, Radar, SlidersHorizontal } from "lucide-react";
+import { Brain, Database, LayoutDashboard, Radar, SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/mandate", label: "Mandate", icon: SlidersHorizontal, match: (p: string) => p.startsWith("/mandate") },
   { href: "/sourcing", label: "Sourcing", icon: Radar, match: (p: string) => p.startsWith("/sourcing") },
   { href: "/pipeline", label: "Pipeline", icon: LayoutDashboard, match: (p: string) => p.startsWith("/pipeline") || p.startsWith("/applications") || p.startsWith("/founders") },
+  { href: "/database", label: "Database", icon: Database, match: (p: string) => p.startsWith("/database") },
 ];
 
 export function Nav() {

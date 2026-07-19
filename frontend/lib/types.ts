@@ -210,6 +210,64 @@ export interface Recombination {
   backend: string;
 }
 
+// --- Founders directory + team matching (Phase 8 Database tab) ------------
+
+/** One row in the founders directory. Classification/availability come from the
+ *  same complementarity engine the scoring backend and memo use. */
+export interface DirectoryFounder {
+  id: number;
+  name: string;
+  github_handle: string | null;
+  founder_score: number | null;
+  technical: boolean;
+  commercial: boolean;
+  classification: string; // technical | commercial | technical + commercial | unclassified
+  domain: string | null; // sectors the founder has worked in
+  available: boolean; // not tied to an active in-thesis application
+  availability: string; // human-readable reason
+  returning: boolean; // track record across more than one company
+}
+
+/** Compact per-founder view inside a match result. */
+export interface MatchFounder {
+  id: number;
+  name: string;
+  github_handle: string | null;
+  founder_score: number | null;
+  technical: boolean;
+  commercial: boolean;
+  classification: string;
+  domain: string | null;
+  available: boolean;
+  availability: string;
+}
+
+/** A HYPOTHETICAL team read on a pairing - never changes a real score. */
+export interface FounderMatch {
+  founder_a: MatchFounder;
+  founder_b: MatchFounder;
+  sector: string | null;
+  solo: boolean;
+  technical: boolean;
+  commercial: boolean;
+  complementary: boolean;
+  domain_gap: boolean;
+  prior_collab: boolean;
+  verdict: string;
+  lift: number;
+  gaps: string[];
+  patterns: string;
+  rationale: string;
+  hypothetical_team: string;
+}
+
+/** Ranked complementary, available founders for one founder ("find matches"). */
+export interface FounderMatches {
+  founder: MatchFounder;
+  needs: string[]; // coverage the founder is missing: technical / commercial
+  candidates: RecombinationCandidate[];
+}
+
 // --- Trace (Phase 6 agentic traceability) ---------------------------------
 
 export interface TraceSignal {
