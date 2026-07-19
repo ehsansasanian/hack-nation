@@ -33,6 +33,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
+from app.ingestion.enrichment import enrich_application
 from app.models import Application
 from app.reasoning.diligence import run_diligence
 from app.reasoning.memo import generate_memo
@@ -106,6 +107,18 @@ def analyze_application(application_id: int, prefer_backend: str | None = None) 
     raises: any error is captured onto ``analysis_error`` and reported as ``failed``.
     """
     try:
+        # 0. Enrichment: fetch self-declared founder links into signals BEFORE screening,
+        #    so cold-start detection and every downstream axis see the fetched evidence.
+        #    Enrichment never raises (per-source failures are recorded, not fatal).
+        _set_status(application_id, "enriching")
+        try:
+            with SessionLocal() as session:
+                enrich_application(
+                    session=session, application_id=application_id, prefer_backend=prefer_backend
+                )
+        except Exception:  # noqa: BLE001 - enrichment is best-effort, never fails the chain
+            pass
+
         # 1. Screening + scoring (one call; screening is the gate that can reject).
         _set_status(application_id, "screening")
         with SessionLocal() as session:
