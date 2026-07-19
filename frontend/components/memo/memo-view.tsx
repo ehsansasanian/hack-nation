@@ -121,13 +121,14 @@ const SWOT_KEYS = ["Strengths", "Weaknesses", "Opportunities", "Threats"] as con
 
 function Swot({ text }: { text: string }) {
   const map: Record<string, string[]> = {};
-  for (const line of text.split("\n")) {
-    const m = line.match(/^(Strengths|Weaknesses|Opportunities|Threats):\s*(.*)$/);
-    if (m) {
-      const val = m[2].trim();
-      map[m[1]] =
-        !val || /^none/i.test(val) ? [] : val.split(/;\s*/).filter(Boolean);
-    }
+  // Match each quadrant label and capture everything up to the next label (or end),
+  // so both the newline-separated (offline) and inline run-on (LLM) formats parse.
+  const re =
+    /(Strengths|Weaknesses|Opportunities|Threats)\s*:\s*([\s\S]*?)(?=(?:Strengths|Weaknesses|Opportunities|Threats)\s*:|$)/gi;
+  for (const m of text.matchAll(re)) {
+    const key = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+    const val = m[2].trim().replace(/[.;]+\s*$/, "");
+    map[key] = !val || /^none/i.test(val) ? [] : val.split(/;\s*/).filter(Boolean);
   }
   const tone: Record<string, string> = {
     Strengths: "text-emerald-700",
