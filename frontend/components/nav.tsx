@@ -7,9 +7,9 @@ import { Brain, LayoutDashboard, Radar, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { href: "/pipeline", label: "Pipeline", icon: LayoutDashboard, match: (p: string) => p.startsWith("/pipeline") || p.startsWith("/applications") || p.startsWith("/founders") },
-  { href: "/sourcing", label: "Sourcing", icon: Radar, match: (p: string) => p.startsWith("/sourcing") },
   { href: "/mandate", label: "Mandate", icon: SlidersHorizontal, match: (p: string) => p.startsWith("/mandate") },
+  { href: "/sourcing", label: "Sourcing", icon: Radar, match: (p: string) => p.startsWith("/sourcing") },
+  { href: "/pipeline", label: "Pipeline", icon: LayoutDashboard, match: (p: string) => p.startsWith("/pipeline") || p.startsWith("/applications") || p.startsWith("/founders") },
 ];
 
 export function Nav() {
@@ -21,7 +21,7 @@ export function Nav() {
           <Brain className="size-4.5" />
         </span>
         <div className="leading-tight">
-          <div className="text-sm font-semibold tracking-tight">The VC Brain</div>
+          <div className="text-sm font-semibold tracking-tight">DealAI</div>
           <div className="text-[0.7rem] text-muted-foreground">Venture funnel OS</div>
         </div>
       </Link>
