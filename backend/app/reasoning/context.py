@@ -105,6 +105,24 @@ def _links_from(rec: dict) -> dict:
     return links
 
 
+def _bio_from_record(rec: dict) -> str | None:
+    """The declared bio for a co-founder.
+
+    The apply form has no dedicated bio field - it folds a co-founder's short bio
+    into ``other_links`` as a ``"bio: ..."`` string (see the DeclaredFounderLinks
+    convention). Extract it here so a NEW co-founder's self-described background
+    actually reaches team-complementarity reasoning (e.g. a commercial co-founder
+    is not invisibly read as "no bio"). An explicit ``rec['bio']`` still wins.
+    """
+    if rec.get("bio"):
+        return str(rec["bio"]).strip() or None
+    for raw in rec.get("other_links") or []:
+        s = str(raw or "").strip()
+        if s.lower().startswith("bio:"):
+            return s[s.index(":") + 1 :].strip() or None
+    return None
+
+
 def _resolve_declared_founders(
     session: Session, application: Application, create: bool
 ) -> list[Founder]:
@@ -136,7 +154,7 @@ def _resolve_declared_founders(
                 normalized_name=_normalize_name(name),
                 github_handle=gh,
                 links=_links_from(rec),
-                bio=(rec.get("bio") or None),
+                bio=_bio_from_record(rec),
                 score_history=[],
             )
             session.add(founder)

@@ -212,9 +212,14 @@ def _record_outcome(report: dict, source: str, outcome: str, n: int, note: str |
 
 
 def _hint_for(record: dict, fallback_name: str | None) -> FounderHint:
+    # Enrichment runs before scoring and is what first resolves/creates each declared
+    # co-founder (via their GitHub signal), so it must carry the declared bio - else a
+    # new co-founder is created bio-less and team-complementarity can never read them.
+    from app.reasoning.context import _bio_from_record
+
     name = record.get("name") or fallback_name
     gh = normalize_github_handle(record.get("github"))
-    return FounderHint(name=name, github_handle=gh)
+    return FounderHint(name=name, github_handle=gh, bio=_bio_from_record(record))
 
 
 def _ingest(session: Session, signals: list[RawSignal]) -> int:
