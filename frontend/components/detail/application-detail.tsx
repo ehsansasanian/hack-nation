@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, FileText, User } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, History, User } from "lucide-react";
 
 import { api } from "@/lib/api";
-import type { AnalysisStatus, Signal, Trace } from "@/lib/types";
+import type { AnalysisStatus, FounderDetail, Signal, Trace } from "@/lib/types";
 import { orderedScores } from "@/lib/format";
 import { ErrorState, Spinner } from "@/components/async";
 import { PageHeader } from "@/components/page-header";
@@ -22,6 +22,37 @@ const TERMINAL: AnalysisStatus[] = ["ready", "screened_out", "failed"];
 const POLL_MS = 2000;
 const MAX_POLLS = 90; // ~3 min safety cap so a stalled run never polls forever
 
+/** A founder is "returning" when there's a track record beyond this application:
+ *  a prior company, or a founder-score history entry from another application.
+ *  Derived purely from GET /founders/{id} - no backend changes. */
+export interface ReturningInfo {
+  priorCompanies: string[];
+  fromOtherApplications: boolean;
+  founderScore: number | null;
+}
+
+function returningInfo(
+  f: FounderDetail,
+  currentCompanyId: number,
+  currentAppId: number,
+): ReturningInfo | null {
+  const priorCompanies = f.companies
+    .filter((c) => c.id !== currentCompanyId)
+    .map((c) => c.name);
+  const otherAppIds = new Set(
+    f.score_history
+      .map((e) => e.application_id)
+      .filter((x): x is number => x != null && x !== currentAppId),
+  );
+  const returning = priorCompanies.length > 0 || otherAppIds.size > 0;
+  if (!returning) return null;
+  return {
+    priorCompanies,
+    fromOtherApplications: otherAppIds.size > 0,
+    founderScore: f.founder_score,
+  };
+}
+
 async function loadDetail(id: string) {
   const [app, trace] = await Promise.all([
     api.application(id),
@@ -29,11 +60,15 @@ async function loadDetail(id: string) {
   ]);
   const founders = await Promise.allSettled(app.founders.map((f) => api.founder(f.id)));
   const signalsById = new Map<number, Signal>();
+  const returningById = new Map<number, ReturningInfo>();
   for (const r of founders) {
-    if (r.status === "fulfilled")
-      for (const s of r.value.signals) signalsById.set(s.id, s);
+    if (r.status !== "fulfilled") continue;
+    const f = r.value;
+    for (const s of f.signals) signalsById.set(s.id, s);
+    const info = returningInfo(f, app.company.id, app.id);
+    if (info) returningById.set(f.id, info);
   }
-  return { app, signalsById, trace };
+  return { app, signalsById, trace, returningById };
 }
 
 function DeckText({ text }: { text: string }) {
@@ -55,6 +90,35 @@ function DeckText({ text }: { text: string }) {
         </pre>
       )}
     </section>
+  );
+}
+
+/** "Returning founder" badge - surfaces a persistent track record ("ship once,
+ *  start stronger next time") and links straight to the founder's profile. */
+function ReturningFounderBadge({
+  founderId,
+  info,
+}: {
+  founderId: number;
+  info: ReturningInfo;
+}) {
+  const detail =
+    info.priorCompanies.length > 0
+      ? `prior: ${info.priorCompanies.join(", ")}`
+      : "prior scoring history on file";
+  return (
+    <Link
+      href={`/founders/${founderId}`}
+      title={`Track record found - ${detail}`}
+      className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+    >
+      <History className="size-3" />
+      Returning founder
+      {info.founderScore != null && (
+        <span className="tabular-nums">· score {info.founderScore.toFixed(1)}</span>
+      )}
+      <span className="hidden text-indigo-500 sm:inline">· {detail}</span>
+    </Link>
   );
 }
 
@@ -140,7 +204,7 @@ export function ApplicationDetail({ id }: { id: string }) {
     );
   if (!data) return null;
 
-  const { app, signalsById, trace } = data;
+  const { app, signalsById, trace, returningById } = data;
   const scores = orderedScores(app.scores);
   const coldStart = scores.some((s) => s.cold_start);
   const screened = app.status === "screened_out";
@@ -153,7 +217,7 @@ export function ApplicationDetail({ id }: { id: string }) {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Link href="/" className="text-muted-foreground hover:text-foreground">
+            <Link href="/pipeline" className="text-muted-foreground hover:text-foreground">
               Pipeline
             </Link>
             <span className="text-muted-foreground">/</span>
@@ -199,21 +263,28 @@ export function ApplicationDetail({ id }: { id: string }) {
               cold-start founder
             </Badge>
           )}
-          {app.founders.map((f) => (
-            <Link
-              key={f.id}
-              href={`/founders/${f.id}`}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-xs font-medium hover:border-blue-300 hover:text-blue-700"
-            >
-              <User className="size-3" />
-              {f.name}
-              {f.founder_score != null && (
-                <span className="tabular-nums text-muted-foreground">
-                  {f.founder_score.toFixed(1)}
-                </span>
-              )}
-            </Link>
-          ))}
+          {app.founders.map((f) => {
+            const returning = returningById.get(f.id);
+            return (
+              <React.Fragment key={f.id}>
+                <Link
+                  href={`/founders/${f.id}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-xs font-medium hover:border-blue-300 hover:text-blue-700"
+                >
+                  <User className="size-3" />
+                  {f.name}
+                  {f.founder_score != null && (
+                    <span className="tabular-nums text-muted-foreground">
+                      {f.founder_score.toFixed(1)}
+                    </span>
+                  )}
+                </Link>
+                {returning && (
+                  <ReturningFounderBadge founderId={f.id} info={returning} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
 
         {/* screening */}
