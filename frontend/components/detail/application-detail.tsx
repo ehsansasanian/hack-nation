@@ -2,10 +2,30 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, FileText, History, User } from "lucide-react";
+import {
+  AtSign,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Code2,
+  FileText,
+  Globe,
+  History,
+  Link2,
+  User,
+} from "lucide-react";
 
 import { api } from "@/lib/api";
-import type { AnalysisStatus, FounderDetail, Signal, Trace } from "@/lib/types";
+import type {
+  AnalysisStatus,
+  ApplicationDetail as ApplicationDetailData,
+  DeclaredFounderLinks,
+  EnrichmentSource,
+  Founder,
+  FounderDetail,
+  Signal,
+  Trace,
+} from "@/lib/types";
 import { orderedScores } from "@/lib/format";
 import { ErrorState, Spinner } from "@/components/async";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +36,7 @@ import { TraceProvider } from "@/components/trace/trace-panel";
 import { AxisCard } from "./axis-card";
 import { ClaimsTable } from "./claims-table";
 import { OutreachDraft } from "./outreach-draft";
+import { EnrichmentOutcomes } from "./enrichment-outcomes";
 import { AnalysisProgress, ReRunAnalysis, isInFlight } from "./analysis-progress";
 
 const TERMINAL: AnalysisStatus[] = ["ready", "screened_out", "failed"];
@@ -119,6 +140,289 @@ function ReturningFounderBadge({
       )}
       <span className="hidden text-indigo-500 sm:inline">· {detail}</span>
     </Link>
+  );
+}
+
+// --- Founders section -------------------------------------------------------
+// Lists every founder declared on apply. Enrichment only entity-resolves the
+// PRIMARY founder onto the company (co-founder enrichment signals carry no
+// company hint), so declared_links is the source of truth for "all founders";
+// we augment each with the resolved Founder row (score / profile / returning
+// badge) when we can match it by github handle or normalised name.
+
+const LINK_ICON: Record<string, typeof Code2> = {
+  github: Code2,
+  linkedin: Building2,
+  website: Globe,
+  x: AtSign,
+  other: Link2,
+};
+
+interface LinkPill {
+  key: string;
+  label: string;
+  href: string;
+  source: keyof typeof LINK_ICON;
+}
+
+interface FounderCardData {
+  key: string;
+  name: string;
+  role: string | null;
+  bio: string | null;
+  founderId: number | null;
+  founderScore: number | null;
+  links: LinkPill[];
+  sources: EnrichmentSource[]; // enrichment_report keys this founder declared
+}
+
+const normName = (n: string | null | undefined) =>
+  (n ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Bare github handle from "octocat" or a full profile URL. */
+function ghHandle(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let v = value.trim();
+  if (!v) return null;
+  v = v.replace(/^https?:\/\/(www\.)?github\.com\//i, "");
+  v = v.replace(/^@/, "").replace(/[/?#].*$/, "");
+  return v || null;
+}
+
+function ensureUrl(v: string | null | undefined): string | null {
+  if (!v) return null;
+  const t = v.trim();
+  if (!t) return null;
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+}
+
+/** Split other_links into the role/bio context the apply form folds in (the API
+ *  has no dedicated field) and any genuine extra URLs. */
+function parseFounderMeta(other: string[] | undefined): {
+  role: string | null;
+  bio: string | null;
+  links: string[];
+} {
+  let role: string | null = null;
+  let bio: string | null = null;
+  const links: string[] = [];
+  for (const raw of other ?? []) {
+    const s = (raw ?? "").trim();
+    if (!s) continue;
+    const lower = s.toLowerCase();
+    if (lower.startsWith("role:")) role = s.slice(s.indexOf(":") + 1).trim() || role;
+    else if (lower.startsWith("bio:")) bio = s.slice(s.indexOf(":") + 1).trim() || bio;
+    else links.push(s);
+  }
+  return { role, bio, links };
+}
+
+function buildLinks(
+  declared: DeclaredFounderLinks | null,
+  resolved: Founder | null,
+  otherLinks: string[],
+): LinkPill[] {
+  const pills: LinkPill[] = [];
+  const seen = new Set<string>();
+  const push = (source: keyof typeof LINK_ICON, label: string, href: string | null) => {
+    if (!href) return;
+    const k = href.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    pills.push({ key: `${source}:${href}`, label, href, source });
+  };
+  const rl = resolved?.links ?? {};
+  const gh = ghHandle(declared?.github) ?? resolved?.github_handle ?? ghHandle(rl.github);
+  if (gh) push("github", "GitHub", `https://github.com/${gh}`);
+  push("linkedin", "LinkedIn", ensureUrl(declared?.linkedin ?? rl.linkedin));
+  push("website", "Website", ensureUrl(declared?.website ?? rl.website ?? rl.blog));
+  push("x", "X", ensureUrl(declared?.x ?? rl.x ?? rl.twitter));
+  for (const l of otherLinks) push("other", "Link", ensureUrl(l));
+  return pills;
+}
+
+function sourcesFromDeclared(d: DeclaredFounderLinks): EnrichmentSource[] {
+  const s: EnrichmentSource[] = [];
+  if (d.github) s.push("github");
+  if (d.website) s.push("web");
+  if (d.linkedin) s.push("linkedin");
+  if (d.x) s.push("x");
+  return s;
+}
+
+function sourcesFromResolved(f: Founder): EnrichmentSource[] {
+  const rl = f.links ?? {};
+  const s: EnrichmentSource[] = [];
+  if (f.github_handle || rl.github) s.push("github");
+  if (rl.website || rl.blog) s.push("web");
+  if (rl.linkedin) s.push("linkedin");
+  if (rl.x || rl.twitter) s.push("x");
+  return s;
+}
+
+function matchResolved(
+  declared: DeclaredFounderLinks,
+  resolved: Founder[],
+): Founder | undefined {
+  const gh = ghHandle(declared.github);
+  if (gh) {
+    const byGh = resolved.find(
+      (f) => f.github_handle && f.github_handle.toLowerCase() === gh.toLowerCase(),
+    );
+    if (byGh) return byGh;
+  }
+  const nn = normName(declared.name);
+  return nn ? resolved.find((f) => normName(f.name) === nn) : undefined;
+}
+
+function resolvedOnlyCard(f: Founder): FounderCardData {
+  return {
+    key: `f${f.id}`,
+    name: f.name,
+    role: null,
+    bio: f.bio ?? null,
+    founderId: f.id,
+    founderScore: f.founder_score,
+    links: buildLinks(null, f, []),
+    sources: sourcesFromResolved(f),
+  };
+}
+
+function buildFounderCards(app: ApplicationDetailData): FounderCardData[] {
+  const resolved = app.founders ?? [];
+  const declared = app.declared_links ?? [];
+  const cards: FounderCardData[] = [];
+  const usedIds = new Set<number>();
+
+  if (declared.length > 0) {
+    declared.forEach((d, i) => {
+      const match = matchResolved(d, resolved);
+      if (match) usedIds.add(match.id);
+      const meta = parseFounderMeta(d.other_links);
+      cards.push({
+        key: `d${i}`,
+        name: d.name?.trim() || match?.name || `Founder ${i + 1}`,
+        role: meta.role,
+        bio: meta.bio ?? match?.bio ?? null,
+        founderId: match?.id ?? null,
+        founderScore: match?.founder_score ?? null,
+        links: buildLinks(d, match ?? null, meta.links),
+        sources: sourcesFromDeclared(d),
+      });
+    });
+    // Resolved founders with no declared entry (e.g. legacy re-apply) still show.
+    for (const f of resolved) if (!usedIds.has(f.id)) cards.push(resolvedOnlyCard(f));
+  } else {
+    for (const f of resolved) cards.push(resolvedOnlyCard(f));
+  }
+  return cards;
+}
+
+function FounderCard({
+  card,
+  report,
+  returning,
+}: {
+  card: FounderCardData;
+  report: ApplicationDetailData["enrichment_report"];
+  returning: ReturningInfo | undefined;
+}) {
+  return (
+    <div className="space-y-2.5 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1.5">
+          <User className="size-4 text-muted-foreground" />
+          {card.founderId != null ? (
+            <Link
+              href={`/founders/${card.founderId}`}
+              className="text-sm font-semibold hover:text-blue-700"
+            >
+              {card.name}
+            </Link>
+          ) : (
+            <span className="text-sm font-semibold">{card.name}</span>
+          )}
+        </span>
+        {card.role && <Badge variant="muted">{card.role}</Badge>}
+        {card.founderScore != null && (
+          <span
+            title="Persistent founder score"
+            className="inline-flex items-center rounded-md border border-border bg-background px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground"
+          >
+            score {card.founderScore.toFixed(1)}
+          </span>
+        )}
+        {returning && card.founderId != null && (
+          <ReturningFounderBadge founderId={card.founderId} info={returning} />
+        )}
+      </div>
+
+      {card.links.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {card.links.map((l) => {
+            const Icon = LINK_ICON[l.source];
+            return (
+              <a
+                key={l.key}
+                href={l.href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:border-blue-300 hover:text-blue-700"
+              >
+                <Icon className="size-3" />
+                {l.label}
+              </a>
+            );
+          })}
+        </div>
+      )}
+
+      {report && card.sources.length > 0 && (
+        <EnrichmentOutcomes report={report} sources={card.sources} />
+      )}
+
+      {card.bio && (
+        <p className="text-xs leading-relaxed text-muted-foreground">{card.bio}</p>
+      )}
+
+      {card.links.length === 0 && card.sources.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No links provided - not penalised (cold-start protection).
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FoundersSection({
+  app,
+  returningById,
+}: {
+  app: ApplicationDetailData;
+  returningById: Map<number, ReturningInfo>;
+}) {
+  const cards = React.useMemo(() => buildFounderCards(app), [app]);
+  if (cards.length === 0) return null;
+  const multi = cards.length > 1;
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+        {multi ? `Founding team · ${cards.length} founders` : "Founder"}
+        <span className="ml-2 font-normal">
+          declared links fetched as evidence; blocked sources kept as references
+        </span>
+      </h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {cards.map((c) => (
+          <FounderCard
+            key={c.key}
+            card={c}
+            report={app.enrichment_report}
+            returning={c.founderId != null ? returningById.get(c.founderId) : undefined}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -249,6 +553,7 @@ export function ApplicationDetail({ id }: { id: string }) {
             error={app.analysis_error}
             busy={busy}
             onAnalyze={onAnalyze}
+            enrichmentReport={app.enrichment_report}
           />
         )}
 
@@ -263,29 +568,10 @@ export function ApplicationDetail({ id }: { id: string }) {
               cold-start founder
             </Badge>
           )}
-          {app.founders.map((f) => {
-            const returning = returningById.get(f.id);
-            return (
-              <React.Fragment key={f.id}>
-                <Link
-                  href={`/founders/${f.id}`}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-xs font-medium hover:border-blue-300 hover:text-blue-700"
-                >
-                  <User className="size-3" />
-                  {f.name}
-                  {f.founder_score != null && (
-                    <span className="tabular-nums text-muted-foreground">
-                      {f.founder_score.toFixed(1)}
-                    </span>
-                  )}
-                </Link>
-                {returning && (
-                  <ReturningFounderBadge founderId={f.id} info={returning} />
-                )}
-              </React.Fragment>
-            );
-          })}
         </div>
+
+        {/* founders - all declared founders, links + per-source enrichment outcomes */}
+        <FoundersSection app={app} returningById={returningById} />
 
         {/* screening */}
         {app.screening_rationale && (
