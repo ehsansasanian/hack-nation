@@ -8,6 +8,8 @@ It runs **fully offline** via a deterministic reasoning backend (used for the de
 
 Three layers - **Memory** (what we know), **Intelligence** (how we reason), **Experience** (how an investor sees it) - wrapped around a four-stage pipeline.
 
+![DealAI architecture](docs/architecture.png)
+
 ```mermaid
 flowchart TB
     subgraph EXP["Experience layer - Next.js investor dashboard"]
