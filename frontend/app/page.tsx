@@ -19,10 +19,6 @@ export default function LandingPage() {
           DealAI
         </h1>
 
-        <p className="mt-5 text-sm font-medium tracking-wide text-white/55 sm:text-base">
-          The VC Brain - Sourcing → Screening → Diligence → Decision
-        </p>
-
         <div className="mt-11 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
           <Link
             href="/pipeline"
