@@ -11,6 +11,7 @@ import { Async, useFetch } from "@/components/async";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { TagInput } from "@/components/ui/tag-input";
 
@@ -24,7 +25,55 @@ const DEFAULT_THESIS: Thesis = {
   ownership_target: null,
   risk_appetite: "medium",
   active: true,
+  investment_principles: null,
+  axis_notes: {},
+  valuation_cap: null,
+  instrument: null,
+  business_model: null,
+  min_arr_usd: null,
+  min_growth_rate: null,
+  require_technical_founder: false,
+  exclusions: [],
 };
+
+const INSTRUMENTS = ["SAFE", "priced", "convertible"];
+const BUSINESS_MODELS = ["B2B SaaS", "marketplace", "deep tech", "PLG"];
+const AXES: { key: string; label: string }[] = [
+  { key: "founder", label: "Founder axis" },
+  { key: "market", label: "Market axis" },
+  { key: "idea_vs_market", label: "Idea-vs-market axis" },
+];
+
+/** A single-select segmented control that can be toggled back off (optional field). */
+function Segmented({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onChange(value === o ? null : o)}
+          className={cn(
+            "rounded-lg border px-3 py-1 text-sm font-medium transition-colors",
+            value === o
+              ? "border-blue-600 bg-blue-600 text-white"
+              : "border-border text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 async function loadThesis(): Promise<Thesis> {
   try {
@@ -67,12 +116,18 @@ function ThesisForm({ initial }: { initial: Thesis }) {
 
   const set = <K extends keyof Thesis>(k: K, v: Thesis[K]) =>
     setT((prev) => ({ ...prev, [k]: v }));
+  const setAxisNote = (axis: string, v: string) =>
+    setT((prev) => ({ ...prev, axis_notes: { ...(prev.axis_notes ?? {}), [axis]: v } }));
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
+      // Only keep non-empty per-axis emphasis notes.
+      const axisNotes = Object.fromEntries(
+        Object.entries(t.axis_notes ?? {}).filter(([, v]) => v && v.trim()),
+      );
       await api.updateThesis({
         name: t.name,
         sectors: t.sectors,
@@ -82,6 +137,15 @@ function ThesisForm({ initial }: { initial: Thesis }) {
         ownership_target: t.ownership_target,
         risk_appetite: t.risk_appetite,
         active: true,
+        investment_principles: t.investment_principles?.trim() || null,
+        axis_notes: axisNotes,
+        valuation_cap: t.valuation_cap?.trim() || null,
+        instrument: t.instrument ?? null,
+        business_model: t.business_model ?? null,
+        min_arr_usd: t.min_arr_usd ?? null,
+        min_growth_rate: t.min_growth_rate?.trim() || null,
+        require_technical_founder: !!t.require_technical_founder,
+        exclusions: t.exclusions ?? [],
       });
       setSaved(true);
       setTimeout(() => router.push("/pipeline"), 1400);
@@ -166,6 +230,123 @@ function ThesisForm({ initial }: { initial: Thesis }) {
               </button>
             ))}
           </div>
+        </Field>
+      </Card>
+
+      <Card className="space-y-5 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-tight">Fund guidelines</h2>
+          <p className="text-xs text-muted-foreground">
+            Free-text guidance injected into the screening and axis prompts (visible in
+            the reasoning trace). Never overrides the 3-axis discipline, trust levels, or
+            diligence honesty.
+          </p>
+        </div>
+        <Field
+          label="Investment principles"
+          hint="e.g. 'weight founder-market fit over pedigree; back teams that ship'."
+        >
+          <Textarea
+            value={t.investment_principles ?? ""}
+            onChange={(e) => set("investment_principles", e.target.value || null)}
+            placeholder="What this fund believes and how it weighs evidence…"
+          />
+        </Field>
+        <Field label="Per-axis emphasis notes" hint="Optional nudge for a single axis.">
+          <div className="space-y-2">
+            {AXES.map((a) => (
+              <div key={a.key} className="grid grid-cols-[9rem_1fr] items-center gap-2">
+                <label className="text-xs text-muted-foreground">{a.label}</label>
+                <Input
+                  value={(t.axis_notes ?? {})[a.key] ?? ""}
+                  onChange={(e) => setAxisNote(a.key, e.target.value)}
+                  placeholder={
+                    a.key === "founder"
+                      ? "e.g. weight team complementarity heavily"
+                      : "optional"
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </Field>
+      </Card>
+
+      <Card className="space-y-5 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-tight">
+            Investor terms &amp; constraints
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Each constraint gates or informs screening/scoring and is checked against the
+            realized value in the memo&apos;s Mandate-fit block. All optional.
+          </p>
+        </div>
+        <Field label="Business-model type">
+          <Segmented
+            options={BUSINESS_MODELS}
+            value={t.business_model ?? null}
+            onChange={(v) => set("business_model", v)}
+          />
+        </Field>
+        <Field label="Instrument">
+          <Segmented
+            options={INSTRUMENTS}
+            value={t.instrument ?? null}
+            onChange={(v) => set("instrument", v)}
+          />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Entry valuation ceiling">
+            <Input
+              value={t.valuation_cap ?? ""}
+              onChange={(e) => set("valuation_cap", e.target.value || null)}
+              placeholder="$15M"
+            />
+          </Field>
+          <Field label="Minimum ARR (USD)" hint="Traction gate; pre-revenue reads as a gap.">
+            <Input
+              type="number"
+              min={0}
+              value={t.min_arr_usd ?? ""}
+              onChange={(e) =>
+                set("min_arr_usd", e.target.value === "" ? null : Number(e.target.value))
+              }
+              placeholder="250000"
+            />
+          </Field>
+        </div>
+        <Field label="Minimum growth rate" hint="e.g. '15% MoM'.">
+          <Input
+            value={t.min_growth_rate ?? ""}
+            onChange={(e) => set("min_growth_rate", e.target.value || null)}
+            placeholder="15% MoM"
+          />
+        </Field>
+        <Field label="Technical-founder requirement">
+          <button
+            type="button"
+            onClick={() => set("require_technical_founder", !t.require_technical_founder)}
+            className={cn(
+              "rounded-lg border px-3 py-1 text-sm font-medium transition-colors",
+              t.require_technical_founder
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-border text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.require_technical_founder ? "Required" : "Not required"}
+          </button>
+        </Field>
+        <Field
+          label="Exclusion list (no-invest)"
+          hint="Hard filter - a company in an excluded sector is screened out."
+        >
+          <TagInput
+            values={t.exclusions ?? []}
+            onChange={(v) => set("exclusions", v)}
+            placeholder="e.g. crypto, gambling"
+            suggestions={["crypto", "gambling", "defense", "adtech"]}
+          />
         </Field>
       </Card>
 

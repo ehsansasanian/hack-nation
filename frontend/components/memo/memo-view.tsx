@@ -149,6 +149,51 @@ function Traction({ text, claims }: { text: string; claims: Claim[] }) {
   );
 }
 
+const FIT_TONE: Record<string, string> = {
+  met: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  gap: "border-red-200 bg-red-50 text-red-800",
+  unknown: "border-slate-200 bg-slate-50 text-slate-600",
+};
+
+/** Mandate fit: each configured constraint vs its realized value, met/gap/unknown. */
+function MandateFit({ text }: { text: string }) {
+  const rows = text
+    .split("\n")
+    .map((l) =>
+      l.match(
+        /^-\s*\[(met|gap|unknown)\]\s*(.*?)\s*-\s*mandate:\s*(.*?)\s*\|\s*realized:\s*(.*)$/i,
+      ),
+    )
+    .filter((m): m is RegExpMatchArray => m !== null);
+  if (!rows.length) return <Prose text={text} />;
+  return (
+    <ul className="space-y-1.5">
+      {rows.map((m, i) => {
+        const [, status, label, target, realized] = m;
+        const tone = FIT_TONE[status.toLowerCase()] ?? FIT_TONE.unknown;
+        return (
+          <li
+            key={i}
+            className="flex items-start justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
+          >
+            <span className="min-w-0">
+              <span className="font-medium">{label}</span>
+              <span className="block text-xs text-muted-foreground">
+                mandate: {target} · realized: {realized}
+              </span>
+            </span>
+            <span
+              className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold uppercase ${tone}`}
+            >
+              {status}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Section({
   title,
   text,
@@ -161,6 +206,7 @@ function Section({
   let body: React.ReactNode;
   if (title === "SWOT") body = <Swot text={text} />;
   else if (title.startsWith("Traction")) body = <Traction text={text} claims={claims} />;
+  else if (title === "Mandate fit") body = <MandateFit text={text} />;
   else body = <Prose text={text} />;
   return (
     <Card className="p-5">
@@ -170,13 +216,17 @@ function Section({
   );
 }
 
-// Preferred section order per the memo spec (Appendix 1).
+// Preferred section order: the five required sections (Appendix 1) first, then the
+// Phase 8 synthesis sections.
 const SECTION_ORDER = [
   "Company snapshot",
   "Investment hypotheses",
   "Problem & product",
   "Traction & KPIs",
   "SWOT",
+  "Team & history",
+  "Mandate fit",
+  "Bear case",
 ];
 
 export function MemoView({ id }: { id: string }) {

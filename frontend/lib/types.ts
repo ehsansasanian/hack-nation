@@ -125,7 +125,21 @@ export interface Memo {
   generated_at: string;
 }
 
-export interface Thesis {
+// Phase 8 customizable fund guidelines + investor-vocabulary mandate constraints.
+// All optional; each gates or informs screening/scoring and shows in the memo.
+export interface MandateExtras {
+  investment_principles: string | null;
+  axis_notes: Record<string, string> | null; // {founder/market/idea_vs_market: note}
+  valuation_cap: string | null;
+  instrument: string | null;
+  business_model: string | null;
+  min_arr_usd: number | null;
+  min_growth_rate: string | null;
+  require_technical_founder: boolean | null;
+  exclusions: string[] | null;
+}
+
+export interface Thesis extends Partial<MandateExtras> {
   id: number;
   name: string;
   sectors: string[];
@@ -146,6 +160,16 @@ export interface ThesisUpdate {
   ownership_target: string | null;
   risk_appetite: string | null;
   active: boolean;
+  // Phase 8 (all optional on the form).
+  investment_principles?: string | null;
+  axis_notes?: Record<string, string>;
+  valuation_cap?: string | null;
+  instrument?: string | null;
+  business_model?: string | null;
+  min_arr_usd?: number | null;
+  min_growth_rate?: string | null;
+  require_technical_founder?: boolean;
+  exclusions?: string[];
 }
 
 // --- Trace (Phase 6 agentic traceability) ---------------------------------
