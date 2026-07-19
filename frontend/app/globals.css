@@ -153,6 +153,19 @@
     border-color: #e5e5e5 !important;
     break-inside: avoid;
   }
+  /* Longer full-checklist memo: keep a heading with its body, don't strand the slim
+     "Not disclosed" rows, and avoid orphan/widow lines within a section's prose. */
+  h2 {
+    break-after: avoid;
+  }
+  .border-dashed {
+    break-inside: avoid;
+  }
+  p,
+  li {
+    orphans: 2;
+    widows: 2;
+  }
   @page {
     margin: 1.6cm;
   }
